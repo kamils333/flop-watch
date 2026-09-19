@@ -1,0 +1,51 @@
+name: flop watch
+
+on:
+  schedule:
+    - cron: "7 * * * *"      # 毎時07分（正時ちょうどは混むので少しずらす）
+  workflow_dispatch:          # 手動実行用。初回の --seed もここから
+    inputs:
+      mode:
+        description: "seed = 現状を記録するだけ / run = 通常実行"
+        default: "run"
+        type: choice
+        options: [run, seed]
+
+permissions:
+  contents: write             # state.json と snapshots/ を書き戻す
+  issues: write               # 検知時に Issue を立てる
+
+concurrency:
+  group: flop-watch           # 実行が重ならないようにする
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run watcher
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          if [ "${{ inputs.mode }}" = "seed" ]; then
+            python3 watch.py --seed
+          else
+            python3 watch.py
+          fi
+
+      - name: Commit state
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state.json snapshots
+          if git diff --cached --quiet; then
+            echo "状態に変化なし。コミットしません。"
+          else
+            git commit -m "watch: $(date -u '+%Y-%m-%d %H:%M UTC')"
+            # 走っている間に他の実行が push している可能性に備える
+            git pull --rebase --autostash || true
+            git push
+          fi

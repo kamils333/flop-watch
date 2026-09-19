@@ -1,0 +1,22 @@
+{
+  "org": "flop-labs",
+  "pages": [
+    "https://flop.finance/",
+    "https://flop.finance/teaser/",
+    "https://flop.finance/intro/",
+    "https://flop.finance/intro/agent/",
+    "https://flop.finance/intro/miner/",
+    "https://flop.finance/intro/validator/",
+    "https://flop.finance/intro/verification/",
+    "https://flop.finance/intro/revenue/",
+    "https://flop.finance/intro/yellowpaper/",
+    "https://technocore.chat/llms.txt"
+  ],
+  "commit_watch": [
+    "flop-labs/yellowpaper",
+    "flop-labs/technocore-chat"
+  ],
+  "operator_roles": ["OWNER", "MEMBER", "COLLABORATOR"],
+  "diff_context_lines": 2,
+  "max_diff_lines_per_page": 60
+}
