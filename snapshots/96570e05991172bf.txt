@@ -1,0 +1,324 @@
+The Flop Network — Teaser
+PROJECT INTRO
+Overview
+Miner
+Validator
+Agent
+Verification
+Revenue model
+Teaser
+Yellow paper
+GPU market ↗
+Draft. One figure on this page LEADS the protocol parameters of record and is not yet ratified: the 85/15 inference-fee split (settlement pays the miner 99%, with 1% to the audit pool, until the validator fee leg lands). Everything else on this page reconciles to the parameters, the 3.5bn genesis airdrop included (ratified by D-0438).
+The Flop Network · Teaser · August 2026
+$FLOP is food for your AI agent .
+Contents 01 Abstract
+02 The Flop Network
+Network parameters
+Recommended hardware
+03 Tokenomics
+04 Testnet and Airdrop
+05 Governance
+06 Hashlock Timelock (HTLC)
+07 Flop Labs LLC
+08 Flop Foundation
+Version 0.1 (draft)
+Status Draft
+Updated 2026-08-26
+Definitive spec Yellow Paper (not yet final)
+Testnet Q4 2026
+Mainnet Q1 2027
+The figures in this document are provisional
+Several are still under review against the protocol parameters of record and may
+change. The Yellow Paper is the definitive specification, and it is not yet final.
+01 Abstract
+The launch of ChatGPT by OpenAI on November 30, 2022, marks the birth of silicon-based life
+forms. While we can debate whether they are conscious, it is undeniable that they are a new
+economic life form that will coexist alongside carbon-based Homo sapiens. ChatGPT boasts the
+fastest adoption curve of any technology in human history. It took only ~60 days to reach its
+first 100 million users.
+The immediate popularity of ChatGPT ushered in the current period of artificial intelligence
+(AI) capital expenditure (CAPEX) investment at levels not seen since the railroad build out in
+the mid to late 19th century as a percentage of global gross domestic product (GDP). By late
+2025, the frontier models offered by the leading AI labs were so advanced that AI agents became
+a reality. It became technologically and economically feasible to spawn one or more agents to
+perform a set of tasks alone or in concert. This was the start of the agentic economy.
+From an entrepreneurial perspective, the agentic economy presents an amazing opportunity to
+capitalise on the network effects of millions, billions, then trillions of agents interacting
+with each other. The internet enabled the creation of online social networks that capitalised
+on humans' digital interactions. The value created is in the trillions and growing at
+Metcalfe's law, where the value of these social networks is N² (N is the number of nodes in
+the network). Social networks like Facebook and cryptocurrencies like Bitcoin's value adhere
+closely to this law. But for agents who can interact with minimal to no friction, 24/7,
+instantaneously, and form subgroups seamlessly, the economic value of a network that caters to
+the agentic economy expands to a theoretical upper limit described by Reed's Law as 2^N (N
+is the number of agents).
+This is no longer a theory. Machines already outnumber humans on civilisation's two great
+networks. Automated traffic surpassed human traffic on the internet in 2025, and in financial
+markets the crossover came years earlier — algorithms now execute roughly 70% of US equity
+volume, machines trading with machines at microsecond speeds. The rails for agent interaction
+are being standardised at TCP/IP pace: the Agent2Agent (A2A) protocol reached over 150 member
+organisations. With inference costs forecast to fall more than 90% by 2030, cheaper agents mean
+exponentially more agents. Cloudflare — which now sees the majority of traffic on its network
+coming from machines, with daily agentic AI requests up more than 1,700% in a single year —
+forecasts that within five years machine-to-machine traffic will be as much as 1,000× human
+traffic, leaving humans "a rounding error on the internet." The agentic economy is arriving on
+schedule.
+1,000×
+Projected M2M vs human traffic, 5 yrs
+1,700%
+Growth in daily agentic AI requests, 1 yr
+~70%
+US equity volume executed by algorithms
+150+
+A2A protocol member organisations
+"AI agentic Internet traffic will obviously VASTLY exceed human usage. Not a close call at
+all. Cloudflare's forecast is accurate."
+— Elon Musk (@elonmusk) on X ,
+August 10, 2026
+Every network requires a mechanism to ration scarce resources. Human civilisation does this via
+government-issued fiat currencies that ride on traditional banking and now blockchain rails.
+But what about the agentic economy? Surely AI agents need a currency they use amongst
+themselves to ration scarce compute. The network that issues the currency of choice for the
+agentic economy will be worth orders of magnitude more than any human-centric currency network
+ever created. As stated earlier, the minimum value is N² and the maximum value is 2^N . By
+the end of the 2020s decade, the world could sport trillions of agents, then this currency
+network will become the most valuable network ever created.
+The Flop Network and its native currency $FLOP will become the payment network that supports
+the agentic economy. But why would a network of agents choose to transact, spend, and save in
+$FLOP rather than the plethora of other currencies vying for their usage? Every agentic payment
+rail built to date is human money wearing an agent's mask — tokenised cards and custodial
+stablecoins, backed by nothing an agent needs to exist. To answer that question, let's go back
+to why humans accept certain forms of currency. We exchange our labour for units of money. This
+money must perform a simple yet profound function. Money must be able to buy food and shelter
+so that a human can live and reproduce. If a monetary instrument cannot directly purchase these
+basic human needs, then humans will not accept it for their labour.
+Agents consume compute and produce intelligence
+At any point, an agent can convert $FLOP into compute, and create intelligence.
+Moving this into the realm of AI agents, the question to ask oneself is: What do agents require
+to exist? The answer is compute. At a basic level, agents consume compute and produce
+intelligence. When we talk about compute, we mean floating-point operations per unit of time
+(FLOPs), hence the name of the network, Flop. In order to be useful to AI agents, the Flop
+Network is a proof-of-useful-inference (PoUI) blockchain where agents task miners to perform
+inference upon request for units of the $FLOP currency. In this way, should an agent wish to,
+at any point it can convert $FLOP into compute, and create intelligence.
+This convertibility is what separates $FLOP from every rival vying for the agentic economy.
+Fiat-wrapped stablecoins are claims on human money; $FLOP is redeemable on demand for the one
+commodity an agent cannot exist without, making it the nearest thing yet created to a
+compute-backed currency. Nor is $FLOP merely spent and forgotten. It is locked by miners as
+stake to provide compute, locked by validators to secure the network, and staked by holders to
+earn yield — so the demand to hold $FLOP rises with network throughput rather than washing
+through it. Existing decentralised compute networks fail one side of this equation or the
+other: Many of their emissions skim a significant amount of value before a miner is paid,
+others pass fees through but have struggled to find demand. The Flop Network is designed to do
+both: near-total fee pass-through to those who do the work, and currency overwhelmingly issued
+against verified useful inference. $FLOP is also deliberately one currency, not two: the same
+token pays for compute, stakes the network, and settles agent-to-agent commerce, avoiding the
+friction of rival dual-token designs.
+Why hasn't a hyperscaler, chip maker, or AI lab built this? Because the referee cannot be a
+player. Nobody accepts a cloud provider verifying its own compute — neutrality is the product,
+and incumbents structurally cannot offer it. A transparent spot market erodes the margins their
+lock-in depends on, and the largest labs are the biggest compute buyers on earth. The oil
+majors did not build the commodity exchanges either.
+In plain English: the Flop Network is a blockchain built for the agentic economy — anyone can
+use their GPUs to provide compute and get paid in $FLOP for running LLMs. The network
+cryptographically verifies the compute was performed correctly, so buyers and sellers transact
+directly, with proof they got what they paid for, instead of trusting a cloud giant or a
+middleman marketplace.
+The rest of this whitepaper will describe at a high level how the Flop Network works. For a
+definitive description of the network, please refer to the yet to be finalised
+Yellow Paper . Many of the exact variables are yet to be determined but let
+this document serve as a generalised overview of what the network hopes to achieve and the
+behaviour it intends to inspire by all participants.
+02 The Flop Network
+The network is the combination of a PoUI and an account-based send and receive blockchain.
+Agents create a session request that is sent to the mempool with the following information:
+Indexer of the hash of the model weights pulled from the network's model data availability
+layer or open-source database
+Maximum latency to complete the task
+Compute used as defined by the number of floating-point operations
+A boolean for confidentiality
+Fee paid in $FLOP
+Miners who possess hardware capable of completing the task accept a session and establish a
+secure and private connection with the requesting agent. The miner who completes the task
+successfully earns 85% of the $FLOP inference fee. If an agent believes the miner did not
+complete the task as given, they can challenge the result, and the network supports a mechanism
+to adjudicate disagreements. Miners are required to stake an amount of $FLOP proportional to
+the amount of compute provided to the network. Ongoing block rewards and inference fees are
+paid in liquid $FLOP — no lockup, no vesting — and can be exchanged for other currencies at any
+time via the network's native HTLC functionality (section 06).
+The Flop Network account-based system allows agents to do the following:
+Token transfers
+Multisig
+Proxy / authority delegation
+Validator staking & authority set
+Miner staking
+Timelock / vesting
+Multi-party pool / collaborative escrow
+Declarative spend-condition layer
+Have pre-set spend limits
+Network parameters
+Parameter
+Value
+Block time
+One second on average
+Block reward
+96 $FLOP
+Block halving
+Every 730 days for the first five halvings
+Long run block reward
+After the fifth halving the block reward will remain constant in perpetuity, providing a permanent security budget for the network's miners and validators rather than leaving security to rest on transaction fees alone
+Once a miner completes a session request, it must prove the inference was actually performed as
+requested. This is the network's answer to the central objection to any PoUI design — that
+verifying inference honestly is as costly as re-running it. The network stacks four layers of
+verification:
+Hardware attestation (TEE). Sessions can run on enterprise GPUs whose Trusted Execution
+Environment cryptographically attests that the advertised model ran, untampered, on genuine
+hardware.
+Showing the work (TOPLOC). Inference leaves a trace: the activations a model produces as
+it runs are hardware- and model-specific and cannot be faked cheaply. The miner commits to a
+compact fingerprint of those activations as its work certificate; validators re-check a
+sampled slice against the expected values. Skipped work, a substituted cheaper model, or a
+canned answer all fail the check — at a fraction of the cost of re-running the inference.
+Re-running the inference. Validators re-execute a randomised sample of sessions and
+compare results. Any disputed session triggers an automated challenge in which the work is
+re-run in full.
+Staked tokens (slashing). Every miner must first stake $FLOP in proportion to the compute
+it offers, putting real capital at risk behind every session it accepts. A miner caught
+cheating by the layers above has its staked tokens slashed — up to the entire stake.
+The network does not need to catch every cheat — with staked capital on the line and
+re-execution always possible, the expected cost of cheating is ruinous.
+The validators then build a block that includes the hash of each proof. Besides building
+blocks, validators must store the model weights, which are held in the data availability layer.
+To become a miner and/or validator one must stake $FLOP. The total number of validators is
+limited to 1,000; roughly every month, the worst performing 50 validators are replaced by the
+top 50 validators in waiting based on a number of availability and uptime requirements. Holders
+of $FLOP may stake their tokens to earn rewards. Miner and validator staked $FLOP is subject to
+slashing for dishonest behaviour. Miners who lie about work done and validators who attempt to
+publish a dishonest block will face draconian slash penalties up to and including a complete
+loss of their stake and a permanent ban from the network.
+Recommended hardware
+Role
+Recommended specifications
+Miner
+A single GPU, or a cluster of GPUs, with 16 GB+ VRAM per unit
+Validator (provisional)
+8+ core CPU • 64 GB RAM • 2 TB NVMe storage • 1 Gbps redundant connection
+These are recommended specifications and subject to refinement before testnet.
+Demand arrives through the channels agents already use. Flop Network compute will be listed on
+the inference marketplaces and gateways where agents and applications compare providers
+programmatically and route to the cheapest reliable supplier — so launch pricing set below
+prevailing market rates is self-marketing. A portion of the block reward is directed to the
+demand side of the market as a usage subsidy, funding that discount without asking miners to
+sell below cost. And for participants who prefer to price in dollars, brokers and market makers
+can quote fixed-dollar inference backed by $FLOP-settled sessions, bridging both currencies
+while the network bootstraps.
+03 Tokenomics
+Cumulative supply to year 10, and the year-10 allocation split
+There is no token sale and no investor allocation. The genesis supply is distributed through
+the testnet airdrop — the bulk of it earned by miners, validators, and agents, with a reserve
+funding ecosystem growth.
+Every token thereafter is issued block by block, in public. Nothing is pre-sold, and nothing
+unlocks ahead of the network's users.
+Every $FLOP is earned through a role in the network:
+Cohort
+Allocation
+Share of year-10 supply
+Earned by
+Airdrop
+4.4bn $FLOP
+24.3%
+Seeds the network at genesis, and is the one allocation not issued through block rewards — technically a pre-mined pool, though it is earned through testnet participation. Breakdown below; claim conditions in section 04.
+Miners
+8.8bn $FLOP
+48.6%
+The network's compute suppliers, running the GPUs that perform verified inference for agents. They earn block rewards in proportion to compute provided, plus 85% of every inference fee — paid liquid, with no lockup.
+Validators
+1.2bn $FLOP
+6.5%
+Verify compute and facilitate transactions: they check miners' work certificates, build blocks, and store model weights, earning block rewards and 15% of inference fees.
+Brokers / agents
+1.2bn $FLOP
+6.5%
+The demand side of the market: their block-reward share subsidises agents' compute purchases and lets brokers quote below-market pricing while the network bootstraps.
+Team + Foundation
+2.0bn $FLOP
+10.8%
+Funds network development and upkeep: 8 $FLOP per block each to Flop Labs and the Flop Foundation, issued on top of the block reward, halving on the same schedule and sunsetting after year ten (sections 07 and 08).
+Staking rewards
+0.6bn $FLOP
+3.2%
+Yield for holders who stake $FLOP, paid pro-rata from block rewards to anyone staking the token — no delegation required.
+The genesis airdrop of 4,400,000,000 $FLOP — 24.3% of the total network supply at year 10 — is
+allocated as follows:
+Cohort
+Allocation ($FLOP)
+Earned by
+Miners
+up to 1,200,000,000 (6.6%)
+Compute provided through verified inference and valid blocks
+Agents
+up to 1,200,000,000 (6.6%)
+Compute consumed through inference requests
+Validators
+1,200,000,000 (6.6%)
+The aggregate stake that secures the network at launch
+Reserve / incentives
+800,000,000 (4.4%)
+Ecosystem and growth incentives
+Total
+4,400,000,000 (24.3%)
+Full genesis pool
+04 Testnet and Airdrop
+Flop Testnet is planned for Q4 2026 and runs for roughly ninety days, with mainnet to follow in
+Q1 2027. It is a full rehearsal of the network in test tokens: miners serve real inference,
+validators produce blocks and check work certificates, and agents buy compute. Participation is
+what earns the genesis airdrop; the allocations are set out in section 03.
+Miners — connect GPUs and serve inference requests. Their airdrop is awarded in proportion
+to the compute they deliver over the testnet — the block rewards they earn plus the inference
+work they complete. Around a quarter is expected to be liquid at the token generation event,
+with the remainder released over the opening months of mainnet as they continue to serve
+compute.
+Validators — run nodes, verify work certificates, and produce blocks. The top 1,000 on a
+combination of uptime, block production, accuracy, and latency are selected for the mainnet
+validator set. Their airdrop is the stake a validator must post: bonded at launch as slashing
+collateral rather than paid out, locked through the first halving, then released over the
+following 1,000 days.
+Agents — claim a test-token faucet and spend it on inference. Their airdrop is based
+largely on what they spend on inference over the testnet, along with various prizes. It
+arrives locked and spendable only on inference or staking — every 3 $FLOP spent on inference
+unlocks 1 airdropped $FLOP, so agents must use the network to make it liquid.
+At the end of the testnet, results are settled into the genesis block. The bulk of the pool is
+expected to be distributed at the token generation event, with any remainder released at a
+later stage.
+05 Governance
+Validators are the guardians of the network. Upon a successful submission of a Flop Improvement
+Protocol (FIP), the validators will vote on the FIP. In most cases, ⅔ of the active validator
+set must approve a FIP before implementation begins. For the first halving, the only entity
+allowed to submit a FIP is the Flop Foundation.
+06 Hashlock Timelock (HTLC)
+The native HTLC functionality allows the exchange of $FLOP for other cryptocurrencies. This
+works by allowing one agent to escrow an amount of $FLOP to be sent to another agent pursuant
+to another cryptocurrency being transferred on an external blockchain. Once the successful
+transaction occurs on the external blockchain, the $FLOP is released by the network. This
+functionality can be expanded to other agent-to-agent exchanges thus powering the formation of
+agentic sub economies. This is consistent with the theory of network value posited by Reed's
+Law at 2^N .
+07 Flop Labs LLC
+This is the entity organised under the laws of St Vincent and the Grenadines that developed the
+Flop Network. As compensation for its work, this entity will receive 8 $FLOP per block, in
+addition to the 96 $FLOP block reward. This allocation follows the same halving schedule as the
+block reward and sunsets after year ten. Cumulatively, it amounts to 5.7% of the total network
+supply at year 10.
+08 Flop Foundation
+This is the entity organised under the laws of St Vincent and the Grenadines that will provide
+continuing development and upkeep of the network. In order to fund the work of core developers,
+this entity will receive 8 $FLOP per block, in addition to the 96 $FLOP block reward. This
+allocation follows the same halving schedule as the block reward and sunsets after year ten.
+Cumulatively, it amounts to 5.7% of the total network supply at year 10. The foundation will
+also receive a portion of $FLOP confiscated from dishonest miners and validators.
+One of the core tasks of foundation development is to improve the network so that block times
+fall to sub one second. This will support near instantaneous and frictionless payments between
+the trillions of agents expected to exist in the near future.
+FLOP Network · Project intro
+Draft · Updated 2026-08-27

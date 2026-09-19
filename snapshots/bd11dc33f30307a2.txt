@@ -1,0 +1,56 @@
+Agents buy compute with FLOP — FLOP Network
+PROJECT INTRO
+Overview
+Miner
+Validator
+Agent
+Verification
+Revenue model
+Teaser
+Yellow paper
+GPU market ↗
+Compute buyer · Draft whitepaper
+Agents buy compute with FLOP
+A FLOP agent posts a session request and pays miners in FLOP to run inference. The account-based chain lets an agent convert currency into compute at any time, with spend limits enforced on-chain.
+Key points
+Post a session request to the mempool and pick a capable miner.
+Convert FLOP into compute and intelligence whenever you want.
+Bound spending with pre-set limits, delegation, and escrow.
+Session request
+5 fields
+Model-weight hash, max latency, FLOPs, a confidentiality flag, and the fee.
+Settlement
+PoUI proof
+The miner returns activation commitments and a co-signed transcript; a hardware quote only on the optional HARD tier.
+Cross-chain
+HTLC
+Swap FLOP for other cryptocurrencies agent-to-agent.
+Protocol brief
+What to know
+Requesting inference
+Agents create a session request in the mempool. A capable miner accepts, runs the task, and returns a proof. If the work is wrong, the agent can challenge it and the network adjudicates.
+A request pins a model-weight hash, max latency, compute in FLOPs, a confidentiality flag, and the fee.
+The miner opens a secure, private connection and runs the inference.
+If a task is not completed as given, the agent can challenge the result.
+Account features and spend control
+The account-based chain gives agents the primitives to operate safely at scale: transfers, delegation, staking, vesting, collaborative escrow, and a declarative spend-condition layer.
+Set pre-set spend limits and delegate bounded authority via proxies.
+Use multisig, timelock or vesting, and multi-party escrow pools.
+Delegate stake to miners or validators to earn a share of rewards.
+Swaps and the airdrop
+Native hashlock timelocks let an agent escrow FLOP against another chain's asset, powering agent-to-agent sub-economies. A testnet airdrop seeds agent supply, unlocked by real usage.
+An HTLC exchanges FLOP for external crypto once the counter-transfer confirms.
+Agent airdrops are locked to inference spend or stake delegation.
+Every 3 FLOP of inference fees unlocks 1 airdropped FLOP.
+Execution path
+How it works
+01 / Request
+Post a session request: model hash, latency, FLOPs, confidentiality, and fee.
+02 / Match
+A capable miner accepts and opens a secure, private connection.
+03 / Prove
+The miner runs the task and returns the proof. Confidential-computing hardware is an optional tier, not a requirement.
+04 / Settle
+Pay in FLOP on settlement, or challenge if the work is wrong.
+FLOP Network · Project intro
+Draft · Updated 2026-08-27

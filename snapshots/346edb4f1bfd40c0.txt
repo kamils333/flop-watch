@@ -1,0 +1,69 @@
+Cheating must not pay: the challenge game — FLOP Network
+PROJECT INTRO
+Overview
+Miner
+Validator
+Agent
+Verification
+Revenue model
+Teaser
+Yellow paper
+GPU market ↗
+Economic security · Draft design
+Cheating must not pay: the challenge game
+FLOP never re-runs inference to trust it. Every session leaves commitments that stay challengeable for a fixed window; a lottery and bonded disputes re-check slices of the work; an upheld fraud verdict burns 100% of the miner's stake. The game is sized so cheating loses money in expectation even when most single cheats slip through.
+Key points
+Every session leaves fingerprints: activation commitments (TOPLOC) and a co-signed transcript root, retained on the data-availability layer for the full challenge window — miner-funded, serve-or-slash.
+Challenges come from two directions: a random, unbiasable lottery over sampled slices of work, and bonded disputes opened by the paying agent or any active validator.
+An upheld fraud verdict slashes 100% of the miner's stake and ejects them. Stake scales with calibrated capacity, so large miners cannot outgrow their bond.
+Challenge window
+~7 d
+Seven days today, bounded by how long the data-availability layer keeps the evidence. Under review to shorten toward hours — audited slices are small and re-verify in minutes.
+Fraud slash
+100%
+The full-burn fault class: upheld dispute fraud, collusion, and evidence forgery — slash, eject, blacklist.
+Audit rate
+2.5%
+SOFT-tier spot-check exposure: about one session in forty. The sampled-audit lottery is a separate dial, drawing 5% of turns by default. Both are governable, not fixed constants.
+Response deadline
+2 h
+A challenged miner must produce the disputed turn's signed evidence — its transcript entry, Merkle proof, and enclave signature; silence defaults to a fraud verdict.
+Protocol brief
+What to know
+What the miner must retain
+During a session the model commits tiny fingerprints of its internal state (TOPLOC: 258 bytes per 32 tokens), and every turn becomes a co-signed leaf under a Merkle root the chain stores at settlement. Those commitments and the audit data are published to the data-availability layer and kept for the full challenge window — the miner pays the storage deposit as a cost of being paid, and providers are slashed if they fail to serve it.
+Retention lives on the data-availability layer under serve-or-slash — not as a promise on the miner's own disk.
+Missing audit data does not dodge the audit: an unanswerable challenge resolves against the miner.
+Designed next step: per-turn encrypted input/output blobs, so an audit needs no live cooperation and, in the honest case, discloses nothing to anyone.
+Who can challenge, and when
+Two lanes. Scheduled: at the end of each epoch a random, unbiasable lottery selects turns to audit — drawn across the work by value, so a single huge faked turn cannot hide inside a long session. Discretionary: the paying agent can dispute its own sessions, and any active validator can dispute any session — so a lazy or colluding payer does not switch detection off.
+The sampled check is cheap by construction: re-running one prefill (~100× cheaper than generation) or a sub-cubic arithmetic check — never the whole session.
+A discretionary challenger posts a 100 FLOP bond, forfeited if the dispute is frivolous — spam prices itself.
+Bisection narrows any disagreement to a single turn in a handful of rounds, so dispute cost is independent of session length.
+What failing costs
+An upheld fraud verdict is the full-burn class: 100% of the miner's stake slashed, ejection, blacklist — the same maximum tier as collusion and evidence forgery — and the agent's escrow is refunded. Stake is capacity-proportional and grows with the compute a miner is calibrated to serve, sized against the fraud profit achievable inside the challenge window.
+Liveness faults (being offline) stay cheap (1–5%) — the burn is reserved for provable fraud.
+A fraud conviction needs on-chain cryptographic evidence; there is no oracle input to bribe.
+Because stake scales with capacity, the largest miners face the largest absolute burn — fraud never pays off by growing.
+Why the math closes
+Sampling never promises to catch every cheat — it makes cheating unprofitable. Even at the lower of the two dials, the SOFT tier's 2.5% spot-check rate, a single cheated slice slips through about 97.5% of the time, and that is fine: the odds of escaping every audit fall off exponentially as more slices are cheated, audits are spread across the work by value so stolen value tracks the number of draws, and the deterrence rule (slash × stake ≥ gain ÷ catch-rate) is closed by the 100% burn. Steal a small slice, risk the entire capacity-proportional stake: negative expected value at any realistic scale.
+One cheated slice is worth a small cut of a session; getting caught costs the whole stake — the asymmetry is the security.
+Cheating at scale is caught almost surely: the escape probability falls off exponentially in the amount of fraud.
+The two dials — audit rate and stake size — are substitutable; governance can raise either until honesty is the only profitable strategy.
+Who pays the auditors
+Audit work is paid from fees: 1% of the miner's settlement payment is carved into an audit pool that pays validators for performing audits. The earmark, the pool, and per-verdict claims are wired; binding a claim to a VRF-assigned auditor, and a bounty to the successful challenger out of the fraud slash, still follow. Re-check work is cheap — a fraction of a percent of session value at the current sampling rate, since a check is one prefill or a small arithmetic test — so the 1% earmark covers it with margin, and audit income scales with usage rather than dying with the block-subsidy halvings.
+Live: settlement carves 1% of the miner's payment into the audit pool, and any active validator that submits audit evidence claims a flat per-verdict fee, once per session, against pool solvency.
+A successful challenger recovers its bond; the extra bounty out of the fraud slash is not wired yet.
+Fee-funded audits succeed the halving: watcher income tracks network usage, not emission.
+Execution path
+How it works
+01 / Commit
+Session settles: the transcript root goes on-chain; the TOPLOC commitments and audit data go to the data-availability layer, miner-funded.
+02 / Window
+Seven days today (shortening under review — slices re-verify in minutes). The evidence stays pinned, and at each epoch close a random lottery picks which slices to audit, drawn across the work by value.
+03 / Challenge
+A sampled validator re-runs the cheap check, or the agent or any validator opens a bonded dispute. The miner has two hours to answer.
+04 / Verdict
+Pass: the miner keeps payment and a frivolous challenger forfeits its bond. Fail or silence: 100% slash, agent refunded, miner ejected.
+FLOP Network · Project intro
+Draft · Updated 2026-08-27

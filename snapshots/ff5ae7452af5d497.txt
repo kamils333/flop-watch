@@ -1,0 +1,69 @@
+Run inference, earn FLOP — FLOP Network
+PROJECT INTRO
+Overview
+Miner
+Validator
+Agent
+Verification
+Revenue model
+Teaser
+Yellow paper
+GPU market ↗
+Compute provider · Draft whitepaper
+Run inference, earn FLOP
+A FLOP miner stakes FLOP and runs verified inference for agents. No confidential-computing hardware is required: the default SOFT tier runs on ordinary GPUs. Complete a session to earn the settled session payment plus a share of the miner block-reward pool, weighted by G_n — the network's unit of calibrated, verified compute.
+Key points
+Stake at least 10,000 FLOP plus the runtime-calculated capacity exposure bond.
+Run on ordinary GPUs. SOFT is the default tier; attested confidential-computing hardware is optional.
+Miners share 75% of the 96 FLOP era-0 block reward, weighted by verified G_n.
+Miner reward pool
+75%
+Of each era block reward, distributed by verified G_n contribution. The rest is 10% validators, 10% agents and brokers, and 5% community stakers.
+Base self-stake
+10,000
+FLOP minimum before the capacity-proportional bond is added.
+Era-0 miner pool
+72
+FLOP per rewarded block: 75% of the 96 FLOP total reward.
+Protocol brief
+What to know
+How mining works
+Miners with capable hardware accept a session request and open a secure, private connection with the agent. Each session leaves activation commitments and a co-signed transcript; that evidence is the proof of useful inference validators record and challengers can audit.
+Accept a compute channel that pins the model, SLA, proof policy, and escrowed payment.
+Run the inference and return the commitments plus the co-signed transcript root.
+Earn the settled session payment plus a G_n-weighted share of the 75% miner block-reward pool.
+SOFT is the default tier
+Verification does not rest on trusted hardware. Every session must carry an activation commitment that a challenger can re-check, and disputes are settled by re-execution under bond. Confidential computing is an optional upgrade, not an entry requirement.
+SOFT is what a miner gets with no attested hardware inventory: any capable GPU, no governed per-device ceiling, accepted capacity equal to measured benchmark throughput.
+SOFT sessions instead carry audit exposure of about one session in forty, plus a 1.25x surge multiplier on capacity stake while the cap is still burst-ratcheted.
+HARD is opt-in: NVIDIA Confidential Computing on a TDX or SEV-SNP host binds the measured model weights and caps capacity at 90% of the summed governed device ceilings. Attestation failure is a 100% slash, so that exposure applies only to miners who choose the HARD path.
+Planned: the SOFT tier is ratified and first-class, but its end-to-end settlement and dispute lane is still being specified, and the currently wired settlement path remains the attested one.
+Profitability is conditional
+Operator return is session payments plus block rewards, less capacity cost. The calculator's default rented GPUs use an all-in 30-day rental price that already covers the provider's power, hardware amortization, and capital cost; owned devices amortize their purchase price separately. Results still change with demand, token price, verified utilization, reward era, G_n share, and capacity cost — they are not a fixed network return.
+The era-0 miner pool is 72 FLOP per rewarded block; it halves every 730 days and reaches a 2.25 FLOP floor after five halvings.
+The miner leg is the residual: the 10% agent/broker leg and 5% community-staker leg were carved out of it, not added on top, and the validator leg stayed at 10%. Neither new leg is distributed yet — each is minted to a protocol-held account pending a distribution design.
+The macro simulator shares the calculator's cost basis but grows network capacity from modeled demand, while the calculator starts from the competition path you pick — so the two answer slightly different questions.
+Both exclude stake opportunity cost, taxes, downtime, and execution risk, so results are stress signals rather than ROI forecasts.
+Size your own case on the Revenue model page: set the fleet, the rent-or-own basis, and the network competition path, then read the range rather than a single number.
+Stake, delegation, and slashing
+Becoming a miner requires a 10,000 FLOP base self-stake plus a capacity exposure bond that scales linearly with the compute you are calibrated to serve. There is no cap on that term — capping it would make fraud profitable for the largest miners. The rate is still under economic reconciliation, so size a fleet against the live requirement rather than a published coefficient.
+Query the chain for the current stake requirement on your calibrated miner account before committing hardware.
+Delegation with miner commission is specified, but block rewards and session payments currently settle straight to the miner account.
+Proven fraud can slash up to 100% of stake and blacklist the miner identity.
+Disputes and testnet conversion
+If an agent believes a task was not completed as requested, it can challenge the result and the network adjudicates. The testnet conversion model allocates the miner share of the genesis pool on verified activity rather than token holdings; the Teaser carries the pool figures.
+Agents can challenge a result; the network runs a mechanism to adjudicate.
+Testnet conversion weights verified compute most heavily, with smaller weights for completed jobs and active days.
+Runtime grants vest linearly over 90 days; the genesis distribution ceremony is not yet wired.
+Execution path
+How it works
+01 / Stake
+Cover the 10,000 FLOP base plus the runtime-calculated capacity exposure.
+02 / Accept
+Accept an agent's session and open a secure, private connection.
+03 / Prove
+Run the inference and submit the proof of useful inference: activation commitments and a co-signed transcript, plus a hardware quote if you run the optional HARD tier.
+04 / Earn
+Validators record the proof; you earn the session payment and a share of the block reward.
+FLOP Network · Project intro
+Draft · Updated 2026-08-27

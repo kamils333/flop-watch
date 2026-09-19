@@ -1,0 +1,60 @@
+{
+  "commits": {
+    "flop-labs/technocore-chat": "e4c4f73f3b28612d7161170b11e08e580b02123a",
+    "flop-labs/yellowpaper": "cb3cbf97a346ff85aca6dba5e924434270ca672c"
+  },
+  "issues_since": "2026-09-19T17:45:28Z",
+  "pages": {
+    "https://flop.finance/": {
+      "lines": 24,
+      "sha": "4433f05d1c89"
+    },
+    "https://flop.finance/intro/": {
+      "lines": 56,
+      "sha": "b7c1070e493d"
+    },
+    "https://flop.finance/intro/agent/": {
+      "lines": 56,
+      "sha": "87a34b4133f1"
+    },
+    "https://flop.finance/intro/miner/": {
+      "lines": 69,
+      "sha": "8b3743cfab2c"
+    },
+    "https://flop.finance/intro/revenue/": {
+      "lines": 261,
+      "sha": "fb222137e2cc"
+    },
+    "https://flop.finance/intro/validator/": {
+      "lines": 56,
+      "sha": "c9d503fa4a6c"
+    },
+    "https://flop.finance/intro/verification/": {
+      "lines": 69,
+      "sha": "24402b730b80"
+    },
+    "https://flop.finance/intro/yellowpaper/": {
+      "lines": 4187,
+      "sha": "fb5575342dd0"
+    },
+    "https://flop.finance/teaser/": {
+      "lines": 324,
+      "sha": "5acf3102e91d"
+    },
+    "https://technocore.chat/llms.txt": {
+      "lines": 339,
+      "sha": "69f7a2e628a6"
+    }
+  },
+  "releases": {
+    "tclk": "v0.1.0",
+    "technocore-chat": "v0.13.0"
+  },
+  "repos": [
+    "technocore-sonnet-challenge",
+    "yellowpaper",
+    ".github",
+    "tclk",
+    "technocore-chat"
+  ]
+}

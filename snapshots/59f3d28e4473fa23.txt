@@ -1,0 +1,261 @@
+FLOP Miner Revenue Model
+PROJECT INTRO
+Overview
+Miner
+Validator
+Agent
+Verification
+Revenue model
+Teaser
+Yellow paper
+GPU market ↗
+Miner economics · testnet to first halving
+Can your compute earn its keep?
+Compare cloud rental with owned desktop and laptop hardware. Revenue runs across 730 Era-0 days; owned-device cost is amortized from the 90-day pre-mainnet testnet through the first halving.
+The cloud rental prices this model starts from are tracked live: Rentable GPU market monitor ↗
+Era 0 730 revenue days 820-day ownership basis No surge factor
+Model How it works
+01 Token value scenario
+Sets the implied $FLOP price: network value ÷ circulating supply. It does not change your share of rewards.
+Base case Flat
+Steady growth Fast growth
+Adoption curve Boom → bust
+Downside
+Network value (market cap) at launch ($M)
+Value path multiplier 1.0×
+02 Compute fleet
+Cloud devices use editable 30-day rent. Desktops and laptops use an editable purchase price converted to a 30-day cost over 820 days. Benchmark weight stays editable because accepted G n —not the device name—sets reward share; keep the preset unless you have a calibration result.
++ Add device
+Owned cost basis = purchase price × 30 ÷ 820. The 820 days are 90 pre-mainnet testnet days + 730 days to the first halving. Use an all-in system price; electricity, financing, repairs, and residual value remain excluded.
+03 Network competition
+Sets your reward share: your H100-equivalents ÷ total verified network compute. It does not set the $FLOP price.
+Base case Flat
+Steady growth Fast growth
+Adoption curve
+Network compute at launch (H100-eq)
+Competition path multiplier 1.0×
+Fixed protocol basis
+Supply starts at 4.4B at TGE — the whole genesis pool is minted at block 0, since the only tokens created after genesis are block rewards. Distribution is slower: Season 0 hands out 3.76B and the reserve remainder follows over ~48 months, staying locked until it does. The model adds no compute-based genesis award because personal allocations are score-based. Tokenomics workbook rev 2026-09-10, ratified as genesis_supply by D-0440.
+04 Optional session revenue
+Estimate miner revenue from paid inference sessions at the workbook's 85% miner share.
+That is the ratified target: settlement currently pays the miner 99%, with 1% to the audit
+pool, until the validator fee leg lands (issue #1352), so this is the conservative figure. The GFLOP price is derived from the per-token session price below, never entered separately. Modeled income scales linearly with your compute and assumes every utilized hour is sold — it does not model demand saturation or competition for paid sessions.
+Include modeled session-payment income
+Defaults are the tokenomics workbook's H100 80GB PCIe baseline row on gpt-oss-120b at MXFP4: 1,110 sustained output tok/s, a billable input stream 10× that, $0.20/1M output and $0.04/1M input, at 60% paid utilization. Prefill and decode are separate capacity limits with separate prices, so they are separate inputs — one blended tok/s figure priced as output is what made an earlier version of this page overstate session income about 3.4×. The workbook solves every device against ONE measured row (H100 SXM, GPUStack / vLLM v0.10.2: 17,058 input and 3,694 output tok/s ceilings); the PCIe figures here are scaled from it and marked estimated, not measured. None of this is observed FLOP demand or a protocol tariff. Switch sessions off for block-reward-only results.
+Output tok/s per H100-eq (sustained) 1,110
+Billable input : output ratio (R) — input tok/s is 11,100
+Price — output ($ / 1M tokens)
+Price — input ($ / 1M tokens)
+Sustained compute per H100-eq (G n /s)
+Paid utilization 60%
+Off = block-reward only. Turn on to test a custom session-payment scenario.
+05 Inspect a period
+Highlighted period — drag, or click the chart 6
+Periods 1–24 are 30 days. Period 25 is the final 10 days to the day-730 halving boundary.
+Pin current as comparison
+clear
+View live result ↓
+FLOP Miner Economics — exported view
+Short-term capacity ledger
+30-day period 1 of 25
+Adjust assumptions ↑
+Weekly ROI
+—
+annualised forward return scaled to 7 days (curve-integrated, not this period held flat)
+Monthly ROI
+—
+annualised forward return scaled to 30 days (curve-integrated)
+Annualised ROI
+—
+next ~12 periods integrated (Σnet ÷ Σcost), carrying the token curve + network growth forward — not this period held flat, not APR.
+Period revenue
+—
+Block rewards + optional sessions
+−
+Capacity cost
+—
+Rent or amortized purchase cost
+=
+Period net
+—
+—
+Your share @ period
+—
+—
+Issued-supply value @ period
+—
+—
+Through first halving net
+—
+—
+How period 6 is calculated
+1 · Reward share —
+2 · Implied $FLOP price —
+3 · Block-reward revenue —
+4 · Session revenue —
+5 · Capacity cost —
+6 · Net cash flow —
+7 · Period ROI —
+8 · Weekly / monthly / annualised —
+Show Network value Revenue & net
+Across Time Network share
+Save PNG Export PDF
+network value
+fee-adjusted break-even
+block rewards (30d run rate)
+session fees (30d run rate)
+cumulative net (profit view)
+inspected period
+—
+What this computes
+An illustrative USD cash-flow scenario for rented or owned compute through the first halving. Reward revenue
+begins at mainnet and runs for 730 days. Owned-device amortization begins 90 days earlier at testnet, for an
+820-day cost basis. Periods 1–24 are 30 days; period 25 is the final 10 days. This is not a forecast.
+The formula
+reward income(t) = Gₙ share proxy(t) × period miner emission × (network value(t) ÷ circulating supply(t))
+Gₙ share proxy(t) = your H100-equivalents ÷ network H100-equivalents(t)
+session income(t) = (output tok/s × $/1M out + input tok/s × $/1M in) ÷ 1e6 × seconds × utilization × 85% miner share
+owned cost / 30d = purchase price × 30 ÷ (90 testnet days + 730 Era-0 days)
+net(t) = reward income(t) + session income(t) − capacity cost(t)
+period ROI(t) = net(t) ÷ capacity cost(t)
+annualised = Σ net(t..t+11) ÷ Σ cost(t..t+11) × 365 ÷ days [curve-integrated over the next ~12 periods]
+weekly / monthly = annualised × 7/365 / annualised × 30/365 [same curve-integrated rate, scaled to the horizon]
+Session income is the miner's 85% share under the workbook's 85/15 miner/validator inference-fee split. That split is the
+ratified target, not what settlement pays today: the chain currently routes the miner 99%, with a 1% audit allocation, because
+the validator fee leg is not implemented yet (issue #1352) — so this figure is conservative for miners. It assumes the paid-utilization rate
+you choose and does not estimate demand probability or other operating costs. Switch it off to inspect block rewards alone.
+Miner emission is 96 FLOP/block × 75% × 86,400 blocks/day. The remaining 25% of the block reward goes
+10% to validators, 10% to agents and brokers, and 5% to community stakers; the last two are minted to
+protocol-held accounts and are not distributed yet. The separate 16 FLOP/block developer subsidy
+(8 each to FLOP Labs and the FLOP Foundation) increases supply but is not miner revenue,
+and halves with the block reward across all five halving eras before stopping. The horizon ends exactly at 63,072,000 blocks,
+or 730 days at one-second blocks.
+Fleet cost basis
+Live rewards use verified effective compute, G n . This model seeds an editable H100-equivalent weight
+for each preset. Keep the preset for a rough comparison, or replace it with an accepted benchmark for the exact
+device, model, precision, software stack, and power limit you will run. Both TEE and non-TEE hardware can
+participate; this model adds no TEE premium or non-TEE penalty.
+Datacenter and cloud presets use editable on-demand rent. Devices in the “Owned desktop / laptop” group use an
+editable all-in purchase price. The model divides that price across 820 days: 90 days from testnet to mainnet plus
+730 mainnet days to the first halving. It adds the 90-day pre-mainnet allocation to through-halving cost, so the
+final owned-device denominator equals the full purchase price. Rented-device cost begins at mainnet; no testnet
+rental is assumed. Electricity, financing, repairs, taxes, and residual value are not modeled.
+Preset Starting reward weight Starting cost basis
+NVIDIA H100 SXM / PCIe / NVL 1.00 / 0.76 / 0.84 $2,153 / $2,081 / $2,297 · Runpod
+NVIDIA H200 / B200 / L40S 1.00 / 2.28 / 0.36 $3,161 / $4,241 / $713 · Runpod
+AMD Instinct MI300X 1.32 $1,433 · Hot Aisle
+NVIDIA RTX 5090 / 4090 / 3090 0.21 / 0.17 / 0.07 $713 / $497 / $331 · Runpod
+RTX 4070 Ti / AMD RX 9070 XT desktops 0.08 / 0.20 $1,800 / $1,800 purchase placeholders → $66 / $66 per 30d
+Intel Arc Pro B70 desktop 0.19 $2,500 purchase placeholder → $91 per 30d
+NVIDIA DGX Spark / GB10 0.06 $4,699 purchase → $172 per 30d
+RTX 5090 / 4090 laptops 0.11 / 0.09 $5,000 / $3,000 purchase placeholders → $183 / $110 per 30d
+MacBook Pro M3 Max / Mac mini M4 Pro 0.002 / 0.001 $3,999 configuration placeholder / $1,399 launch price → $146 / $51 per 30d
+Rates and purchase anchors were checked 15 July 2026 and remain editable. DGX Spark uses NVIDIA's current
+$4,699 MSRP; Mac mini M4 Pro uses Apple's $1,399 launch price. Values labeled “placeholder” are planning inputs,
+not vendor quotes. Starting weights are rough planning ratios based on matrix throughput, memory bandwidth, and
+the local Mac benchmark where available. Vendor FP4, FP8, INT8, FP16, and bandwidth claims are not equivalent
+measurements, so treat every preset as a starting estimate rather than promised G n .
+How scenario paths work
+Every preset starts from the same launch anchor so changing a path tests its shape rather than silently changing
+its starting point. That anchor is the tokenomics workbook's month-1 base case: a $100M network value on 1,200
+H100-equivalents. $100M implies about $0.22/FLOP at TGE ($100M ÷ 0.4589B circulating — 2.4055B of the 2.8644B
+booked at TGE is still locked); it is a planning input, not a target or market forecast.
+Base case is the only preset taken from the workbook rather than drawn as a stress test, and it is the
+default on both paths. Its network value runs $100M, $160M, $220M and $280M across months 1–4, $600M at month 12
+and $1.5B at month 24; network compute runs 1,200, 1,400, 1,600 and 1,800 H100-equivalents across months 1–4,
+2,000 at month 12 and 3,000 at month 24. The workbook's testnet ramp (800 → 1,000 units over T1–T3) is not shown,
+because the pre-mainnet leg here is cost-only. The other presets are generic shapes rescaled onto the same launch
+anchor. They are stress-test paths, not forecasts.
+The generic presets define values at periods 1, 3, 6, 9, 12, 18, and the day-730 boundary; the base case uses
+the workbook's own anchor months — 1, 2, 3, 4, 12, 24, and the day-730 boundary — so re-anchoring it does not
+re-time the others. Twenty-four workbook months is day 730 exactly, so the final 10-day period still sits inside
+month 24 and holds its $1.5B value rather than growing past the end of the modelled window. The model interpolates geometrically between control points, at a constant compound rate per
+month, which is what the workbook does; interpolating linearly instead drifts up to about 11% mid-leg. Names such
+as “fast growth” describe the overall scenario, not a fitted mathematical function. Dragging a base point snaps
+value to $10M/$25M/$50M/$100M planning increments and network size to 50/250/500 H100-equivalent increments;
+preset control points are applied as authored, because the workbook's anchors do not sit on that ladder.
+Provider-branded paths are intentionally omitted because these presets are generic scenarios, not calibrated
+forecasts.
+The paths are independent, not duplicates. Token value changes the implied USD price of each emitted
+FLOP. Competition changes the fraction of miner emissions credited to your fleet. Either can improve while
+the other worsens, so a usable onboarding estimate must stress both.
+What reduces returns
+Supply dilution: circulating supply grows from 0.4589B at TGE to about 9.581B at the
+day-730 boundary — emission plus the airdrop unlock. At a constant network value, the implied
+token price falls about 95.2%.
+Share dilution: as verified network compute grows, a fixed operator's G n share falls.
+Supply basis
+Total supply follows the tokenomics workbook (rev 2026-09-10, §4): the full 4.4B pool minted at
+block 0 and flat thereafter, plus 9.6768M FLOP/day of Era-0 emission. Minting and distribution are
+deliberately separate — the reserve's remaining 0.64B is handed out over eight half-year seasons, but it
+is minted at genesis and sits locked in a reserve address until then, rather than appearing from
+nowhere. Only block rewards create tokens after genesis.
+The implied price divides by float, not by that total. 3.94B of the TGE supply is locked:
+3.30B vesting — 900M of the miner airdrop, the whole 1.2bn agent pool (spendable only on inference, so
+it unlocks by being spent) and the 1,200,000,000 validator bond, unwinding at 265M/month through month
+4, 40M/month through month 12, then 30M/month — plus the 0.64B of reserve not yet distributed, which
+releases 80M per half-year season. Dividing a market cap by total supply would give a fully diluted
+price, which is not what the input above asks for; the workbook divides by its circulating column for
+the same reason. Circulating reproduces the workbook to the FLOP: 460,000,000 at TGE, 5,532,032,000 at
+month 12, 9,584,064,000 at the day-730 boundary — unchanged by the minting revision, which moved
+when the pool is recognised, not when anyone can sell it. It adds no compute-based genesis award to miner
+revenue, and any personal token allocation sits outside this cash-flow model.
+This agrees with protocol params. D-0440 ratified
+genesis_supply = 4,400,000,000 (the workbook's 2026-08-27 restatement, which raised the
+validator bond 305,505 → 1,200,000 and resized the pool to absorb it), so the params page, the
+Yellow Paper appendix and this calculator all carry the same pool. Note the float is almost unchanged
+by that resize — the entire increment is locked collateral. Take pool figures from
+params/flop-protocol-params.yaml ; this page is not an independent source.
+Model assumptions
+Assumption Value used
+TGE supply 4,400,000,000 FLOP minted at block 0, of which 460,000,000 circulating — the rest is locked. Season 0 distributes 3,760,000,000 (100% of the miner, validator and agent cohorts at 1,200,000,000 each, plus 20% of the reserve)
+Genesis pool 4,400,000,000 FLOP (workbook rev 2026-09-10; ratified as genesis_supply by D-0440), minted in full at genesis. The reserve's remaining 640,000,000 is distributed over ~48 months in eight half-year seasons of 80,000,000, staying locked until distributed
+Era-0 miner pool 96 × 75% = 72 FLOP/block; 186,624,000 FLOP per 30-day month
+Block-reward split 75% miners / 10% validators / 10% agents and brokers / 5% community stakers; the last two accrue to protocol-held accounts, undistributed
+Inference-fee split 85% miner / 15% validator (workbook target). Settlement pays 99% miner / 1% audit pool until issue #1352 lands
+Session throughput H100 80GB PCIe baseline, gpt-oss-120b at MXFP4: 1,110 output tok/s sustained and 11,105 billable input tok/s (R = 10), over 453,900 sustained G n /s. Scaled from the one measured row (H100 SXM, vLLM v0.10.2, 17,058 / 3,694 tok/s ceilings), not measured directly
+Session pricing $0.20 per 1M output tokens, $0.04 per 1M input tokens — market averages, not a protocol tariff
+Era-0 emission (96 reward + 16 subsidy) × 86,400 × 30 = 290,304,000 FLOP/month; the subsidy halves with the reward and ends after five eras (D-0436)
+First halving 63,072,000 blocks, approximately day 730
+Owned-device cost basis 90 pre-mainnet testnet days + 730 Era-0 days = 820 days; no residual value
+Share proxy H100-equivalent share approximates G n only under equal verified utilization and quality
+Price and liquidity Network value is user-supplied; the airdrop-release path is modeled linearly, and sell pressure, slippage, and lockup nuances are omitted
+Reading the result
+The on-page calculation trace generates the summary in eight auditable steps: divide your proxy compute by total
+network compute; divide network value by month-end circulating supply; value your share of period miner emissions;
+add the miner's 85% share of modeled session fees; subtract prorated capacity cost; and accumulate that net cash flow through day 730.
+For owned hardware, the through-halving result also includes the 90-day pre-mainnet cost allocation. Network growth reduces
+operator share; float growth reduces implied token price at a fixed value; capacity cost and
+sessions can dominate either. Stress every input instead of treating the default as a prediction.
+Weekly , monthly , and annualised all come from the same curve-integrated forward window: net
+and cost summed over the next ~12 periods (`Σ net ÷ Σ cost`, scaled to 365 days), then expressed per 7, 30, and 365
+days. They carry the chosen token curve and network growth forward rather than freezing this period, so change the
+token scenario and all three move together. They are still not APR,
+IRR, or compounding. The through-halving total (net and average through day 730, owned cost starting 90 days before
+mainnet) appears in the horizon summary below. No residual hardware value is credited.
+Where $/GFLOP comes from
+It is derived, never entered. Because 1 G n is one effective GFLOP,
+USD/GFLOP = (out tok/s × $/1M out + in tok/s × $/1M in) ÷ 1,000,000 ÷ (Gₙ/s) .
+At the workbook defaults — 1,110 output tok/s at $0.20 and 11,105 billable input tok/s at $0.04, over
+453,900 sustained G n /s — that is $0.00147 per 1M G n , or
+$1.47×10 −9 per effective GFLOP.
+The denominator is the device's sustained compute , not its billable token count, and the two
+do not move together. The workbook charges ten input tokens per output token but only prefills five of
+them: the prompt-cache hit rate is 0.5, and cached tokens are billed without being recomputed. Billing
+ratio and compute ratio are deliberately different numbers, and conflating them is the mistake that
+makes inference revenue look several times larger than it is.
+Benchmark anchors
+Exactly one row of the workbook's hardware table is measured: an H100 SXM under GPUStack with
+vLLM v0.10.2 running gpt-oss-120b at MXFP4, whose prefill and decode ceilings are 17,058 input
+and 3,694 output tok/s — a fit that holds across five published workload mixes within
+0.93–1.11 utilisation. Every other device is solved against it, prefill scaling on sustained GFLOPs
+and decode on memory bandwidth. The H100 80GB PCIe baseline this page defaults to
+(756,500 peak dense FP16 GFLOPs × 0.60 sustained factor = 453,900 G n /s, 11,105 in / 1,110 out)
+is marked Estimated (scaled from SXM) in that table. It is not itself a measurement, and nothing
+here is observed FLOP demand.
+Separately, on 15 July 2026 a MacBook Pro (M3 Max, 40-core GPU, 64GB) generated 512-token runs with
+Ollama 0.31.2 / Gemma 3 4.3B Q4_K_M at 90.36, 90.72, and 90.73 generated tokens/s: 90.60 mean. That is a
+local sanity anchor only — model size, quantization, batching, and memory bandwidth make it unsuitable
+as an H100-equivalent production calibration.
+Scenario model · not a forecast Results depend on your inputs and may be wrong. They exclude taxes, fees, downtime, hardware failure, storage, transfer, slippage, and sell pressure. $FLOP can be worth zero. No return is guaranteed; this is not financial, investment, tax, or legal advice.
+FLOP Network · Miner economics Draft · Updated 2026-08-27
