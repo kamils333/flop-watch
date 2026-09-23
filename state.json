@@ -1,9 +1,9 @@
 {
   "commits": {
-    "flop-labs/technocore-chat": "e4c4f73f3b28612d7161170b11e08e580b02123a",
+    "flop-labs/technocore-chat": "f49debd0cd0d50271b62f75420549f2592e8020d",
     "flop-labs/yellowpaper": "cb3cbf97a346ff85aca6dba5e924434270ca672c"
   },
-  "issues_since": "2026-09-23T05:53:39Z",
+  "issues_since": "2026-09-23T11:26:32Z",
   "pages": {
     "https://flop.finance/": {
       "lines": 24,
@@ -48,7 +48,7 @@
   },
   "releases": {
     "tclk": "v0.1.0",
-    "technocore-chat": "v0.14.0"
+    "technocore-chat": "v0.14.1"
   },
   "repos": [
     "technocore-sonnet-challenge",
