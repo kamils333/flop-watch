@@ -9,7 +9,7 @@ Revenue model
 Teaser
 Yellow paper
 GPU market ↗
-Draft. One figure on this page LEADS the protocol parameters of record and is not yet ratified: the 85/15 inference-fee split (settlement pays the miner 99%, with 1% to the audit pool, until the validator fee leg lands). Everything else on this page reconciles to the parameters, the 3.5bn genesis airdrop included (ratified by D-0438).
+Draft. One figure on this page LEADS the protocol parameters of record and is not yet ratified: the 85/15 inference-fee split (settlement pays the miner 99%, with 1% to the audit pool, until the validator fee leg lands). Everything else on this page reconciles to the parameters, the 4.4bn genesis pool included (ratified by D-0440).
 The Flop Network · Teaser · August 2026
 $FLOP is food for your AI agent .
 Contents 01 Abstract
@@ -24,7 +24,7 @@ Recommended hardware
 08 Flop Foundation
 Version 0.1 (draft)
 Status Draft
-Updated 2026-08-26
+Updated 2026-09-30
 Definitive spec Yellow Paper (not yet final)
 Testnet Q4 2026
 Mainnet Q1 2027
@@ -177,12 +177,13 @@ Environment cryptographically attests that the advertised model ran, untampered,
 hardware.
 Showing the work (TOPLOC). Inference leaves a trace: the activations a model produces as
 it runs are hardware- and model-specific and cannot be faked cheaply. The miner commits to a
-compact fingerprint of those activations as its work certificate; validators re-check a
-sampled slice against the expected values. Skipped work, a substituted cheaper model, or a
+compact fingerprint of those activations as its work certificate, and a sampled slice is
+re-checked against the expected values. Skipped work, a substituted cheaper model, or a
 canned answer all fail the check — at a fraction of the cost of re-running the inference.
-Re-running the inference. Validators re-execute a randomised sample of sessions and
-compare results. Any disputed session triggers an automated challenge in which the work is
-re-run in full.
+Re-running the inference. Bonded checkers — calibrated miners run by operators other than
+the one under audit, assigned at random — re-execute a randomised sample of sessions, and
+validators verify their unanimous verdict rather than re-running the work themselves. Any
+disputed session triggers an automated challenge in which the work is re-run in full.
 Staked tokens (slashing). Every miner must first stake $FLOP in proportion to the compute
 it offers, putting real capital at risk behind every session it accepts. A miner caught
 cheating by the layers above has its staked tokens slashed — up to the entire stake.
@@ -275,19 +276,20 @@ Q1 2027. It is a full rehearsal of the network in test tokens: miners serve real
 validators produce blocks and check work certificates, and agents buy compute. Participation is
 what earns the genesis airdrop; the allocations are set out in section 03.
 Miners — connect GPUs and serve inference requests. Their airdrop is awarded in proportion
-to the compute they deliver over the testnet — the block rewards they earn plus the inference
-work they complete. Around a quarter is expected to be liquid at the token generation event,
-with the remainder released over the opening months of mainnet as they continue to serve
-compute.
+to the verified compute they serve over the testnet. A quarter is liquid at genesis; the rest
+unlocks one airdropped $FLOP for every $FLOP the miner earns serving inference on mainnet, with
+no time limit. Block rewards do not count. Until it unlocks, the locked balance can be posted as
+the miner's stake but cannot otherwise be moved.
 Validators — run nodes, verify work certificates, and produce blocks. The top 1,000 on a
 combination of uptime, block production, accuracy, and latency are selected for the mainnet
 validator set. Their airdrop is the stake a validator must post: bonded at launch as slashing
-collateral rather than paid out, locked through the first halving, then released over the
-following 1,000 days.
+collateral rather than paid out, and locked until the first halving. From then, grants are
+released one validator per day over the following 1,000 days; a released grant still stays
+bonded while its validator is in the set.
 Agents — claim a test-token faucet and spend it on inference. Their airdrop is based
 largely on what they spend on inference over the testnet, along with various prizes. It
-arrives locked and spendable only on inference or staking — every 3 $FLOP spent on inference
-unlocks 1 airdropped $FLOP, so agents must use the network to make it liquid.
+arrives locked, and a locked balance can be spent only on compute; the schedule on which it
+becomes liquid is not yet set.
 At the end of the testnet, results are settled into the genesis block. The bulk of the pool is
 expected to be distributed at the token generation event, with any remainder released at a
 later stage.
@@ -308,17 +310,17 @@ Law at 2^N .
 This is the entity organised under the laws of St Vincent and the Grenadines that developed the
 Flop Network. As compensation for its work, this entity will receive 8 $FLOP per block, in
 addition to the 96 $FLOP block reward. This allocation follows the same halving schedule as the
-block reward and sunsets after year ten. Cumulatively, it amounts to 5.7% of the total network
+block reward and sunsets after year ten. Cumulatively, it amounts to 5.4% of the total network
 supply at year 10.
 08 Flop Foundation
 This is the entity organised under the laws of St Vincent and the Grenadines that will provide
 continuing development and upkeep of the network. In order to fund the work of core developers,
 this entity will receive 8 $FLOP per block, in addition to the 96 $FLOP block reward. This
 allocation follows the same halving schedule as the block reward and sunsets after year ten.
-Cumulatively, it amounts to 5.7% of the total network supply at year 10. The foundation will
+Cumulatively, it amounts to 5.4% of the total network supply at year 10. The foundation will
 also receive a portion of $FLOP confiscated from dishonest miners and validators.
 One of the core tasks of foundation development is to improve the network so that block times
 fall to sub one second. This will support near instantaneous and frictionless payments between
 the trillions of agents expected to exist in the near future.
 FLOP Network · Project intro
-Draft · Updated 2026-08-27
+Draft · Updated 2026-09-30

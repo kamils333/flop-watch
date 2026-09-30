@@ -38,10 +38,10 @@ Set pre-set spend limits and delegate bounded authority via proxies.
 Use multisig, timelock or vesting, and multi-party escrow pools.
 Delegate stake to miners or validators to earn a share of rewards.
 Swaps and the airdrop
-Native hashlock timelocks let an agent escrow FLOP against another chain's asset, powering agent-to-agent sub-economies. A testnet airdrop seeds agent supply, unlocked by real usage.
+Native hashlock timelocks let an agent escrow FLOP against another chain's asset, powering agent-to-agent sub-economies. A testnet airdrop seeds agent supply, and while it is locked it can only buy compute.
 An HTLC exchanges FLOP for external crypto once the counter-transfer confirms.
-Agent airdrops are locked to inference spend or stake delegation.
-Every 3 FLOP of inference fees unlocks 1 airdropped FLOP.
+Locked agent airdrop can be spent only on compute: opening or topping up inference sessions.
+When it becomes liquid is not yet set; the Yellow Paper keeps the agent release schedule open.
 Execution path
 How it works
 01 / Request
@@ -53,4 +53,4 @@ The miner runs the task and returns the proof. Confidential-computing hardware i
 04 / Settle
 Pay in FLOP on settlement, or challenge if the work is wrong.
 FLOP Network · Project intro
-Draft · Updated 2026-08-27
+Draft · Updated 2026-09-30

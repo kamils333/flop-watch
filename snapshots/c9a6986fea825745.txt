@@ -53,4 +53,4 @@ Keep model weights available in the data-availability layer.
 04 / Govern
 Vote on FIPs; most need two-thirds of the active set.
 FLOP Network · Project intro
-Draft · Updated 2026-08-27
+Draft · Updated 2026-09-30

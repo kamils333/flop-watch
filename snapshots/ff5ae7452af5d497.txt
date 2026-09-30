@@ -53,8 +53,7 @@ Proven fraud can slash up to 100% of stake and blacklist the miner identity.
 Disputes and testnet conversion
 If an agent believes a task was not completed as requested, it can challenge the result and the network adjudicates. The testnet conversion model allocates the miner share of the genesis pool on verified activity rather than token holdings; the Teaser carries the pool figures.
 Agents can challenge a result; the network runs a mechanism to adjudicate.
-Testnet conversion weights verified compute most heavily, with smaller weights for completed jobs and active days.
-Runtime grants vest linearly over 90 days; the genesis distribution ceremony is not yet wired.
+Ratified (D-0517): a quarter of a miner's airdrop grant is liquid at genesis, and the rest unlocks one FLOP per FLOP earned serving inference on mainnet, with no time limit; block rewards do not count, and the locked balance can be posted as the miner's stake. The runtime still vests airdrop grants on a 90-day linear curve, and the genesis distribution ceremony is not yet wired.
 Execution path
 How it works
 01 / Stake
@@ -66,4 +65,4 @@ Run the inference and submit the proof of useful inference: activation commitmen
 04 / Earn
 Validators record the proof; you earn the session payment and a share of the block reward.
 FLOP Network · Project intro
-Draft · Updated 2026-08-27
+Draft · Updated 2026-09-30

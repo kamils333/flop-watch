@@ -53,4 +53,4 @@ The miner completes the inference and submits the proof of useful inference.
 04 / Settle
 Validators include the proof hash in a block; the miner earns the session payment and a share of the block reward.
 FLOP Network · Project intro
-Draft · Updated 2026-08-27
+Draft · Updated 2026-09-30

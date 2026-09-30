@@ -62,8 +62,8 @@ Session settles: the transcript root goes on-chain; the TOPLOC commitments and a
 02 / Window
 Seven days today (shortening under review — slices re-verify in minutes). The evidence stays pinned, and at each epoch close a random lottery picks which slices to audit, drawn across the work by value.
 03 / Challenge
-A sampled validator re-runs the cheap check, or the agent or any validator opens a bonded dispute. The miner has two hours to answer.
+The cheap check is re-run — today by a sampled validator; under the ratified checker lane by three bonded checkers whose unanimous verdict validators verify — or the agent or any validator opens a bonded dispute. The miner has two hours to answer.
 04 / Verdict
 Pass: the miner keeps payment and a frivolous challenger forfeits its bond. Fail or silence: 100% slash, agent refunded, miner ejected.
 FLOP Network · Project intro
-Draft · Updated 2026-08-27
+Draft · Updated 2026-09-30
