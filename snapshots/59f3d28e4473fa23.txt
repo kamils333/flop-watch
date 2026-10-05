@@ -1,14 +1,16 @@
 FLOP Miner Revenue Model
 PROJECT INTRO
 Overview
+Whitepaper
+Testnet
+Airdrop
+Roles ▾
 Miner
 Validator
 Agent
 Verification
 Revenue model
-Teaser
 Yellow paper
-GPU market ↗
 Miner economics · testnet to first halving
 Can your compute earn its keep?
 Compare cloud rental with owned desktop and laptop hardware. Revenue runs across 730 Era-0 days; owned-device cost is amortized from the 90-day pre-mainnet testnet through the first halving.
@@ -265,4 +267,4 @@ Ollama 0.31.2 / Gemma 3 4.3B Q4_K_M at 90.36, 90.72, and 90.73 generated tokens/
 local sanity anchor only — model size, quantization, batching, and memory bandwidth make it unsuitable
 as an H100-equivalent production calibration.
 Scenario model · not a forecast Results depend on your inputs and may be wrong. They exclude taxes, fees, downtime, hardware failure, storage, transfer, slippage, and sell pressure. $FLOP can be worth zero. No return is guaranteed; this is not financial, investment, tax, or legal advice.
-FLOP Network · Miner economics Draft · Updated 2026-09-30
+FLOP Network · Miner economics Draft · Updated 2026-10-05

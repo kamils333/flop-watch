@@ -1,14 +1,16 @@
 FLOP Network Yellow Paper
 PROJECT INTRO
 Overview
+Whitepaper
+Testnet
+Airdrop
+Roles ▾
 Miner
 Validator
 Agent
 Verification
 Revenue model
-Teaser
 Yellow paper
-GPU market ↗
 Draft — the normative specification of the protocol. Sections marked planned are not yet implemented.
 FLOP Network · Yellow Paper
 Normative specification of the FLOP protocol .
@@ -1175,9 +1177,16 @@ request fee MUST be advanced: the voucher that increments N_i and its fee MUST a
 the request, before the provider sends that request's first chunk, and a provider MAY refuse to
 serve a request without it; bytes then accrue as chunks are acknowledged. Payer-signed cumulative
 vouchers MUST bind the lane, sequence, object/version, acknowledged range commitment, counters
-and amount. Redemption MUST pay only A_i − already_paid_i , after checking signatures,
-monotonic counters, capability/spending authorization, and lane budget; a provider SHOULD
-redeem at most once per epoch per lane. Lane budgets MUST NOT collectively exceed escrow.
+and amount. Only the lane's provider, directly or through an authorized proxy dispatching as that
+provider, MAY submit redemption. Redemption MUST require a sequence strictly above the last
+redeemed sequence, every cumulative counter at least its last redeemed value, an amount equal to
+the formula at the pinned tariff, and already_paid_i < A_i ≤ budget_i . It MUST pay only
+A_i − already_paid_i to that fixed provider, after checking signatures, domain/version,
+capability/spending authorization, and lane budget; provider reassignment MUST NOT invalidate
+a claim. A provider MUST serve only against a voucher that dominates the last one it accepted,
+and SHOULD redeem at most once per epoch per lane. The chain MUST assign lane identifiers
+from per-payer nonces that MUST NOT be reused, including after finalization or pruning.
+Lane budgets MUST NOT collectively exceed escrow.
 Replay, stale counters, overflow, wrong payee, or conflicting domain/version MUST fail closed.
 Validator logs alone MUST NOT authorize a debit.
 R5.4h — Bounded transfer risk. The client MUST authenticate a chunk before acknowledging it;
@@ -1227,8 +1236,23 @@ held-back amount, and held-back rent MUST remain forfeitable through the liabili
 Equivocation on a head or checkpoint, a missing checkpoint after grace, and a failed audit
 MUST be objective faults with E.54 dispositions. Revocation MUST deny new requests at the
 new finalized policy epoch, while preserving vouchers valid under the funded lane's close and claim
-rules. Already committed lane funds MUST remain reserved up to the signed cap until its claim
-deadline; revocation MUST NOT promise immediate cancellation of that bounded exposure.
+rules. A lane's close boundary MUST be the block including the payer's close, or the reservation's
+end if earlier, and MUST NOT move once set, including on repeated close, revocation or provider
+rotation. Closing MUST stop new funding and preserve the lane's reservation-provider slot and
+escrow until finalization. The claim deadline MUST be that boundary plus the profile's pinned
+lane_claim_window_blocks , a nonzero number of blocks at least one paid-storage epoch, fixed at
+funding. A Closing lane MUST redeem only at a known finalized height at or below the deadline,
+and MUST finalize only at a known finalized height strictly above it; an unknown finalized height
+MUST reject both operations. A finality stall MUST freeze the deadline clock; catch-up
+MAY cross the deadline at once, so the window MUST NOT be promised after recovery.
+Settlement MUST accept otherwise-valid vouchers through the deadline regardless of whether
+they were signed before or after close. Once close is finalized, conforming payers and delegates
+MUST stop signing for the lane and conforming providers MUST stop admitting new requests.
+Close MUST NOT be represented as proof of signing time. Already committed lane funds MUST
+remain reserved up to the signed cap until the claim deadline; the payer's post-close exposure is
+the lane's unspent budget, and revocation MUST NOT promise immediate cancellation of it.
+Finalization MUST refund exactly that remaining escrow. Reservation termination MUST NOT
+release funds still allocated to a lane.
 Owner deletion of an object MUST tombstone it in the manifest, stop new ordinary reads, and
 free the object's reserved bytes at the next checkpoint boundary; it MUST NOT change rent
 accrual. Reservation expiry MUST stop accrual and new ordinary reads at term end. Bounded
@@ -1354,7 +1378,9 @@ Funds and a wallet. An agent without FLOP cannot open a reservation, but it can 
 read under a capability from an operator wallet, which is the intended shape for fleets.
 Rationale & sources (non-normative)
 D-0506 narrows D-0412's no-fee rule only for paid application objects; D-0512 scopes its
-activation gate to admit an unratified profile on development networks (R5.4q). Design, pricing examples,
+activation gate to admit an unratified profile on development networks (R5.4q). D-0519 defines
+the fixed lane-close boundary, finalized-prefix claim deadline, bounded post-close exposure and
+provider-only redemption. Design, pricing examples,
 threat assumptions, and validation plan:
 agent-memory-storage-market.md and the
 economics and traffic review; the agent-facing flow and
@@ -1387,7 +1413,7 @@ Capacity-proportional miner self-stake (normative). Required miner self-stake MU
 calibrated throughput with no cap (a cap makes the largest miners' inflation fraud +EV):
 required_self_stake(B_p) = min_miner_self_stake + miner_capacity_stake_per_gflop · B_p
 with min_miner_self_stake = 10,000 FLOP and
-miner_capacity_stake_per_gflop = 0.01 FLOP/(GFLOP·s). The
+miner_capacity_stake_per_gflop = 0.01 FLOP/(G_n/s). The
 coefficient guards emission-inflation fraud: the realized extra reward over the dispute window W for a
 miner claiming X·B_p is r·(X−1)·B_p·W (linear in B_p ), so a constant k tracks the security floor
 k_min(EV) = ((1−p)/p)·(X−1)·P·W / B_total . The onboarding form of this bound is Appendix C.1.
@@ -1515,7 +1541,14 @@ C_emp (miner-proposed; accepted iff floor(C_emp · Δblocks · u_min / 10⁶) �
 C_hard = min(C_emp, floor(C_ceiling · d_hard / 10⁶))
 C_effective ≔ C_emp (SOFT)
 min(C_hard, floor(C_ceiling_current · d_hard / 10⁶)) (HARD)
-Here u_min ≔ calibration_min_utilization_ppm and
+Σ G_job is verified reference work in whole G_n ; Δblocks measures seconds at the 1s block
+timebase, so C_emp , C_ceiling , and C_effective are rates in G_n/s . The accepted cap also
+produces B_p = C_effective · 86,400 in G_n/day for work vesting. The miner-staking adapter
+divides B_p by 86,400 s/day before applying its capacity-stake coefficient; PoUI and session
+credit gates read the instantaneous C_effective rate. The existing direct PoUI gate compares a
+per-proof work count to this rate without a duration factor; its dimensional discrepancy is
+recorded in the unit audit for #1597. Here u_min ≔
+calibration_min_utilization_ppm and
 d_hard ≔ calibration_provisional_discount_ppm .
 C_effective is the activated cap. C_hard is the stored HARD-tier cap; on renewal, the current
 governed inventory ceiling may tighten it but cannot raise it. The miner proposes C_emp ; the work gate
@@ -1595,7 +1628,8 @@ hw-calibration::{accept_benchmark_burst,effective_cap,discounted_cap,renew_bench
 uses the empirical cap for the initial work gate and the tier-dependent effective cap for bonding and
 renewal. At the governed floors, 64 jobs × 1,000 G over 600 blocks admit at most C_emp = 213 ; required work
 is 63,900 G, so 64,000 G passes. Priced miner BOM:
-validator-miner-hardware-costs.md. SDC/drift detector
+validator-miner-hardware-costs.md,
+gn-unit-audit.md. SDC/drift detector
 literature: arXiv:2502.12340, arXiv:2605.04213, arXiv:2604.10390. Formal:
 FlopSpecs/CalibrationFastPath.lean ,
 FlopSpecs/CalibrationDrift.lean ,
@@ -1672,15 +1706,30 @@ many days as there are Validator grants. Until the release order is fixed
 ( E.38 ), Validator grants MUST NOT be released. Releasing
 a grant lifts only its vesting freeze: it MUST NOT unbond stake, and a validator in the active set
 MUST keep at least validator_min_stake bonded (§15).
-Miner and Validator grants MUST NOT use a performance adjustment. The Agent grant's release
-horizon remains E.38 ; if it uses a linear schedule,
-airdrop_vesting_duration_blocks MUST govern it and
-the grant MUST be fully vested at its end block.
+Miner and Validator grants MUST NOT use a performance adjustment.
+An Agent grant MUST NOT unlock any principal at its start block, and it has no end block. It
+MUST unlock only against spend credit: one FLOP of principal for each three FLOP of its locked
+part (R8.8) in the payable (Appendix F.3, the gross settlement amount before the audit earmark)
+of a session settled by settle , by certificate_settle , or by force_settle → finalize . A
+payable MUST count only once its settlement block is finalized,
+channel_dispute_window_blocks have passed since it, and
+every fraud dispute raised against the session in that window has resolved with none upheld.
+Locked principal spent through agent_transfer , refunds, the R12.1d penalty, and any other leg
+outside the payable MUST NOT accrue credit. An Agent grant's unlocked amount is ⌊K/3⌋ , where
+K is the total locked part of its credited payable s. Its locked compute spend C , the principal drawn by the R8.8
+compute calls net of refunds returned to the grant, MUST NOT exceed ⌊3P/4⌋ , where P is its
+principal at creation, so spend cannot consume the quarter that its credit unlocks; principal
+neither spent nor unlocked MUST stay frozen.
 R8.8 — Claim and locked spend. claim_vested MUST use the finalized head to calculate the
 unlocked amount, subtract the amount already claimed, and release only a positive remainder from the
 grant freeze. Still-locked principal of an Agent grant MAY be spent only through
-agent_transfer , open_channel , top_up_escrow , and force_open for compute; that spend MUST
-consume vesting principal and MUST NOT turn it into freely transferable credit. Still-locked
+agent_transfer , open_channel , top_up_escrow , and force_open for compute, within the R8.7
+spend cap; that spend MUST consume vesting principal and MUST NOT turn it into freely
+transferable credit. Escrow a channel draws from locked principal, at opening or by top-up, is its
+locked part. At close the escrow MUST be allocated once, in this order: the payable draws on
+the locked part first; a refund then draws on what remains of the locked part first and returns
+that share to the grant as frozen principal, reducing its locked compute spend; every other leg
+draws on the remainder. Still-locked
 principal of a Miner grant MAY be bonded as that miner's own self-stake (§6.1); it stays frozen
 while bonded and after unbonding until it unlocks. Still-locked principal of a Miner or Validator
 grant MUST NOT otherwise be spent, transferred, or used for compute; slashing of bonded stake
@@ -1691,11 +1740,12 @@ and removed from the grant's freeze atomically with the slash, so the slash neve
 freeze.
 Data structures
 An airdrop grant records its tier, its principal at creation, start block, and claimed amount. A Miner
-grant also records its accrued unlock credit and the total principal slashed from it, and an Agent
-grant on a linear schedule its end block. The conversion snapshot records the ratified Era-T height,
-account cohort and activity, fraud and cluster filters, allocation, and a binding hash.
-The conversion score, validator activity basis, Validator release order, agent release horizon, and
-reserve disposition remain open in E.38 .
+grant also records its accrued unlock credit and the total principal slashed from it, an Agent grant
+its locked compute spend and accrued spend credit, and a channel the locked part of its escrow. The
+conversion snapshot records the ratified Era-T height, account cohort and activity, fraud and cluster
+filters, allocation, and a binding hash.
+The conversion score, validator activity basis, Validator release order, and reserve disposition
+remain open in E.38 .
 Rationale & sources (non-normative)
 Grounding: ghost-task-sampling-design.md (sampling,
 GhostTaskCommitment / MinerExecutionEvidence / CheckerVerdict , issuer/checker split + appeal),
@@ -1709,7 +1759,8 @@ scoring inputs, snapshot, and the fail-closed miner adjustment), D-0517 (the Min
 and earn-to-unlock credit, the Validator freeze to the first halving and daily release, and immobile
 locked Miner and Validator principal; it supersedes D-0514's miner adjustment and narrows D-0515's
 locked spend to Agent grants), D-0515 (grant landing, claims, and
-locked compute spend). Formal, for R8.1's work-vesting grant only:
+locked compute spend), D-0522 (Agent spend-to-unlock: one FLOP per three of locked principal in a settled
+payable , the three-quarter spend cap, and locked-first payout and refund attribution). Formal, for R8.1's work-vesting grant only:
 FlopSpecs/Vesting.lean ( unlock_le_ratio , whose
 h1 : R_p ≤ 1 hypothesis is enforced by R8.1's clamp). Low- B_p calibration sandbagging remains
 M13's [GAP] . Status:
@@ -1975,6 +2026,11 @@ out-of-range turn indices, checked-sum the submitted g_n values, and require tha
 aggregate_gn ( verified_work_from_turns ; §12.1). This authenticates the submitted leaf values and
 their arithmetic. It does not prove that the claimed execution occurred or that the submitted turns
 exhaust an independently committed transcript (E.43/E.44).
+R11.2b. Current-profile channel payout MUST NOT issue public work credit, increase reward
+accumulators or performance-vesting work, refresh committee recency, or update calibration from a
+receipt. This applies to cooperative, certificate, unilateral, forward, and unrecoverable-DA payout.
+Challenge expiry alone MUST NOT make a receipt eligible. Future independently audited credit
+and recovery of historical credit require the separate evidence and protocol disposition in E.44.
 11.3 Validator slashing table
 pallet_validators is the single authority for validator penalties.
 Offence
@@ -2010,7 +2066,8 @@ recoverable class (a lone double-sign is most often an honest failover bug). On 
 order (delegated-loss waterfall) MUST be: operator self-stake first, then native delegators pro-rata,
 then sponsors at the fault rate.
 Rationale & sources (non-normative)
-Provenance: D-0409 (slashing-table reconciliation), D-0420 (correlated equivocation), D-0419
+Provenance: task 1494 (confirmed payment-only scope; decision ID pending),
+D-0409 (slashing-table reconciliation), D-0420 (correlated equivocation), D-0419
 (unbonding slash-lock). The P0 agent-economics sweep (INV-02, fail_task , session nonce, payout
 atomicity) closed the four flagged-not-enforced invariants. Grounding:
 formal-specs-agent-economics.md ,
@@ -2046,8 +2103,9 @@ and cumulative root and counter-sign the turn with the Appendix F.3 per-turn age
 and timing inputs. Settlement carries the separate agent receipt v1, which binds channel_id ,
 final_root , aggregate_gn , and payable exactly as defined in Appendix F.3. settle posts the final
 root + aggregate G_n . These signatures prove agreement on a receipt and sum; they do not prove that the
-output resulted from the claimed execution. The current cooperative path pays and credits the co-signed
-claim immediately. Public reward eligibility and late-fraud recovery therefore remain open in
+output resulted from the claimed execution. The current cooperative path pays private escrow
+immediately and issues no public work credit (R11.2b). Future audited reward eligibility and
+recovery of historical credit after late fraud remain open in
 E.44 .
 R12.1c — Tier-specific model binding. A HARD-tier open_channel and settle MUST verify the
 proof's measured dm-verity root against the registry ( ModelRegistryQuery::verify_measured_root ); a
@@ -2667,7 +2725,7 @@ AckWindow ; miner ratifies its enclave key or the agent reclaims escrow ( expire
 streaming turns (off-chain)
 none — enclave signs leaves; the agent co-signs the receipt
 settle / force_settle
-no quorum gates cooperative crediting — the agent's co-signed receipt authorizes payout + immediate claimed G_n credit, but does not prove execution correctness (E.44); force_settle opens a challenge window in which validators verify and co-sign (2/3) a TOPLOC/measured-root mismatch verdict from the checker lane (R3.5d) → fraud slash
+the agent's co-signed receipt authorizes private payment, with no public work credit (R11.2b); force_settle opens a challenge window in which validators verify and co-sign (2/3) a TOPLOC/measured-root mismatch verdict from the checker lane (R3.5d) → fraud slash; closed-channel recovery remains open (E.44)
 dispute (fraud only)
 standing = session agent (own channel) + active validators (any channel); adjudicate the bisection; DA serve-or-slash supplies the contested leaf; non-response → fraud verdict + slash
 Two distinct co-signings: (a) the validator BFT attestation quorum co-signs a proof for G_n
@@ -2794,6 +2852,14 @@ staker_share_ppt
 §9
 D-0435
 Community-staker share of each block reward (5%; yellowpaper §9) — all FLOP stakers other than miners and validators.
+reward_distribution_period_blocks
+86_400 blocks
+§9
+Blocks between block-rewards distributions (one day at 1 s blocks).
+gn_decay_factor_ppb
+1_000_000_000 ppb
+§9
+GnDecayFactor read when the key is absent: 1.0, i.e.
 finality_committee_premium_weight_ppm
 1_100_000 ppm
 §9
@@ -3152,7 +3218,7 @@ Value
 Decision
 Description
 throughput_tripwire_gflops_per_sec
-2_000_000 GFLOPS/s
+2_000_000 G_n/s
 §4.2
 D-0405
 Reject (never clamp) any claim whose implied gn*1000/latency_ms exceeds this; reject-only, governable, default-on. yellowpaper §4.2.
@@ -3274,7 +3340,7 @@ Description
 tokens_per_byte_band_ppm_llama3
 500_000 ppm
 §4
-Certified upper bound on honest tokens-per-byte for the Llama-3 tokenizer (ppm; 500000 = 0.5 tokens/byte) — the per-(model, tokenizer) model-registry field that caps the metering cert padding constraint (e): n_tokens ≤ ⌈bytes · band/1e6⌉ (#871, spec whitepaper/research/metering-cert-spec.md §4).
+Certified upper bound on honest tokens-per-byte for the Llama-3 tokenizer (ppm; 500000 = 0.5 tokens/byte) — the per-(model, tokenizer) model-registry field that caps the metering cert padding constraint (e): prompt_tokens ≤ ⌈len(input_bytes) · band/1e6⌉ and generated_tokens ≤ ⌈(len(output_bytes) + 1) · band/1e6⌉ (#871, spec whitepaper/research/metering-cert-spec.md §4).
 Metering cert circuit version + guest image-id registry (#929)
 Parameter
 Value
@@ -3525,6 +3591,14 @@ staker_share_ppt
 STAKER_SHARE_PPT
 SettlementInt.BlockRewards.stakerPpt
 —
+reward_distribution_period_blocks
+RewardDistributionPeriodBlocks
+—
+PERIOD_BLOCKS
+gn_decay_factor_ppb
+DEFAULT_GN_DECAY_FACTOR_PPB
+—
+DEFAULT_DECAY_PPB
 finality_committee_premium_weight_ppm
 FINALITY_COMMITTEE_PREMIUM_WEIGHT_PPM
 —
@@ -3939,9 +4013,9 @@ ChannelDecodePolicies marker. The agent verifies the leaf and cumulative root an
 with the Appendix F.3 per-turn agent ack before accepting output. If the agent refuses to co-sign, the miner settles unilaterally at the
 last mutual receipt. Re-attestation recurs every k turns (§12.1h).
 C.5 Claim. At close the miner posts the final root, aggregate G_n , and last mutual receipt in
-settle / force_settle ; crediting is immediate after GnSink::validate_session_gn (a plausibility bound
-— §11.2), then payout_settlement feeds the aggregate G_n into the WorkVesting / BlockRewards
-accumulator. The settle path re-checks the measured root against the registry.
+settle / force_settle ; GnSink::validate_session_gn checks plausibility before payment (§11.2).
+Channel payout does not feed WorkVesting / BlockRewards , committee recency, or calibration (R11.2b).
+The settle path re-checks the measured root against the registry.
 C.6 Close. settle (both signatures → immediate payout, no under-use refund); force_settle →
 finalize (challenge window 7 d ≤ W ); timeout (non-delivery → full refund, φ=0 ); failed/early
 close (three-way split, §12.1d); dispute (fraud only — bisection; non-response → fraud verdict).
@@ -4103,14 +4177,18 @@ adaptive attacks, DA publication, audit selection, and adjudication. State condi
 product only with justified conditional independence. Placeholder: artifact presence records a claim but
 does not establish execution correctness or a cryptographic false-accept rate. Home: §3.2–§3.5, §12.1,
 Appendix F. Blocking: protocol design, adversarial matrix, and implementation-to-proof conformance test. Tracking: #1493.
-E.44 — Cooperative work-credit eligibility [TBD] . Define when a co-signed session receipt becomes
-eligible for public work rewards. Signatures, Merkle membership, and sum equality prove agreement and
-arithmetic, not claimed execution. Specify required audit/finality treatment, false-work rejection or
-recovery, late-fraud effects on issued rewards, evidence availability, calibrated-cell admission, audit
-timing, and challenge standing. Placeholder: cooperative payout transfers reserved escrow, while public
-work credit carries no end-to-end correctness claim until this rule ratifies. Home: §3.6, §9, §11.2,
-§12.1, §15.6. Blocking: colluding payer+miner adversarial test on the actual reward path and a protocol
-decision. Tracking: #1494.
+E.44 — Cooperative work-credit eligibility [PARTIAL; future activation/recovery TBD] .
+The confirmed payment-only disposition suppresses new public credit at every
+current-profile channel payout, including unilateral finalization and DA void. Production-runtime
+regressions exercise a self-funded/related payer+miner coalition with ordinary SOFT keys, valid
+signatures and plausible fabricated amounts, replay, mismatched evidence, and delayed fraud.
+Signatures, Merkle membership, and sum equality prove agreement and arithmetic, not claimed execution.
+Closed-channel reports reject; duplicate reports do not recover payment or alter reward/recency state.
+Historical credit and issued rewards are preserved, with no implemented clawback. Future activation
+still needs independently auditable/final execution evidence, challenge standing/deadlines, retention
+of collectible collateral, and correction/recovery of historical credit/rewards and eligibility.
+The distinct decision ID and exact public bundle await owner approval. Home: §3.6, §9, §11.2, §12.1,
+§15.6. Tracking: #1494. Private evidence: runtime observations.
 E.45 — Effective-challenge incentive model [TBD] . Define players, utilities, challenger rewards and
 costs, coalition/bribery behavior, exposure horizon, collectible collateral, and miner-wide reservation
 across concurrent channels. Expand p_effective into availability, selection, inclusion, correct
@@ -4277,21 +4355,21 @@ rendezvous treated as untrusted transport. Home: §12, §13. Blocking: #1823.
 E.38 — Unresolved conversion and release policy [RATIFY] . §8.2 specifies the decided genesis
 allocation and airdrop path. Placeholder: ratify conversion score caps and sublinear aggregation,
 the accounting identity and owner-signed spend rules, verifiable-demand and maintained-duration gates,
-the validator cohort's activity basis, and whether activity under-counts can be appealed. Ratify the
-Agent grant horizon (the pallet's linear schedule conflicts with the simulator's Y1/Y2/Y3 release) and
-whether spend-to-unlock ships; the proposed 3:1 spend requirement for
-genesis_agent_airdrop exceeds projected inference demand over that
-window. Fix the Validator release order of R8.7; until it is fixed, no Validator grant releases.
-Decide the disposition of Miner principal that never earns its unlock. Whether a fraud verdict upheld after the dispute window
-reverses unlock credit follows E.44. Residual risk: once its quarter is liquid, a miner can buy
-inference from itself through an agent it controls and unlock the rest at about the 1% audit earmark,
-roughly 0.75% of principal; no runtime common-control rule binds this (see E.49). Decide the
+the validator cohort's activity basis, and whether activity under-counts can be appealed. Fix the
+Validator release order of R8.7; until it is fixed, no Validator grant releases. Decide the
+disposition of Miner and Agent principal that never unlocks. Whether a fraud verdict upheld after the
+dispute window reverses unlock or spend credit follows E.44. Residual risk: once its quarter is liquid,
+a miner can buy inference from itself through an agent it controls and unlock the rest at about the
+1% audit earmark, roughly 0.75% of principal; an agent can likewise pay a miner it controls from
+locked principal, receive about 99% of it back as that miner's payout, and unlock a further third of
+the spend. No runtime common-control rule binds either (see E.49). Decide the
 unallocated-remainder disposition, publication of operator-held filter inputs, and the
 genesis_reserve release controller. Home: §8.2, §9.3. Blocking: #257,
 #1175, #1354, #1357.
 E.54 — Paid agent-storage activation profile [RATIFY] . Fix the §5.4 canonical wire widths/order,
 message domains and cross-language vectors; ciphertext/chunk/erasure/key-wrapping suites; capability,
-revocation, lane-close and key-recovery boundaries; custody/audit proofs with unpredictable challenges,
+revocation, lane-close and key-recovery boundaries; the funding-pinned lane claim window
+lane_claim_window_blocks and its residual post-close budget exposure; custody/audit proofs with unpredictable challenges,
 selection/standing and objective fault adjudication; activation, service, challenge, repair and terminal
 retention windows; collateral reservation, replacement budgets, slash/compensation disposition; and
 capacity, object/request/credit limits with benchmark-backed tariff economics. The profile MUST
@@ -4308,6 +4386,20 @@ pin aggregate attempted-work/traffic/credit accounting, retry bounds, restart be
 replenishment and protected protocol reserves, including failed admission and repair paths. Placeholder: paid storage disabled (outside the R5.4q development-network scope, D-0512); no numerical launch rates, compensation
 guarantee, or continuous-availability claim. The activation profile MUST enumerate each new
 protocol limit's name, unit, allowed range, consumer, governance mutability, and existing-deal behavior.
+The E.54 profile MUST constrain its permitted activation, challenge and funded-request timing so
+that, for every lane close boundary C , the funding-pinned lane_claim_window_blocks W covers the
+maximum remaining setup-entitlement maturity and every funded-request deadline affecting that lane's
+claims. Each such entitlement MUST become redeemable, and each such deadline MUST expire, no
+later than C + W , accounting for sequential delays and inclusive/exclusive boundary rules. A profile
+or admission permitting an obligation beyond that deadline MUST be rejected; missing bounds
+MUST NOT be treated as zero.
+Profile qualification and admission MUST establish, under protocol-permitted finality behavior,
+at least one actual runtime dispatch opportunity after all entitlement prerequisites complete and
+while known finalized height remains at or below the unchanged deadline. Unsupported or missing
+bounds MUST reject qualification/admission, and affected work MUST NOT be enabled before
+that qualification, including on development networks. This establishes redemption validity, not
+guaranteed transaction inclusion; maturity-time arithmetic alone MUST NOT be claimed to exclude
+a finality jump across the entire redemption interval.
 Ratified numerical protocol limits MUST enter the canonical parameter YAML, generated Appendix A,
 and caller-consumption checks together with their implementations. The profile MUST fix the
 epoch tariff's electorate (capacity-declaring validators), stake weights, median aggregation and ties,
@@ -4540,8 +4632,8 @@ CapacityReservation (on-chain)
 reservation id, payer, tariff version, reserved encoded bytes per provider, assignment history/generation, activation/end, escrow, per-provider cumulative rent counters and segment budgets, namespace count, transfer history, termination cause, collateral reservations and held-back rent, state, claim deadline
 conservation; take-or-pay; one per payer per term; fault-claim precedence; no overlapping billable assignments
 ServiceLane (on-chain)
-payer, provider, reservation, lane nonce, tariff version, fixed budget, redeemed writes/bytes/requests/amount, policy epoch, close boundary, claim deadline, state
-lane budgets partition held funds; one tariff per cumulative counter set; shared by all namespaces and delegates; no refund before valid claims expire
+payer, provider, reservation, lane nonce, tariff version, fixed budget, redeemed sequence/writes/bytes/requests/amount, policy epoch, pinned claim window in blocks, close boundary, claim deadline, state
+lane budgets partition held funds; one tariff per cumulative counter set; shared by all namespaces and delegates; fixed close boundary and finalized-prefix deadline; no refund before valid claims expire; identifiers never reused; provider reassignment preserves claims
 ProviderCheckpoint (on-chain)
 provider, epoch, root over (namespace → manifest root, heads root, sequence), cumulative counters commitment, signature
 one per provider per epoch; missing after grace or conflicting with a receipt is a fault; inclusion proofs verifiable by clients
@@ -4599,7 +4691,7 @@ raise reserved-capacity cap (splice-in)
 channel not Open
 settle(channel_id, final_root, aggregate_gn, claimed_measured_root, agent_receipt_sig, transcript_ref, verified_turns)
 miner (signed); agent bilaterally signs receipt
-verify versioned receipt, every explicitly versioned turn signature/path, distinct indices, checked aggregate, calibration/ GnSink , measured root, required TOPLOC record, and no open escalation; immediate reserved-escrow payout + claimed G_n credit (E.44)
+verify versioned receipt, every explicitly versioned turn signature/path, distinct indices, checked aggregate, calibration/ GnSink , measured root, required TOPLOC record, and no open escalation; immediate private reserved-escrow payout; no public work credit (R11.2b/E.44)
 BadReceiptSignature ; UnsupportedLeafVersion ; AggregateGnMismatch ; TooManySettlementTurns ; MerklePathTooLong ; GnTripwireRejected ; root/TOPLOC/escalation errors
 force_settle(channel_id, final_root, aggregate_gn, claimed_measured_root, agent_receipt_sig, transcript_ref, verified_turns)
 miner or agent (signed)
@@ -4732,12 +4824,12 @@ payer
 assigned provider, fresh nonce, aggregate wallet cap and held funds; unauthorized / over budget
 ServiceLaneFunded
 redeem_service(lane, voucher)
-anyone with valid signed voucher; fixed payee
-signature/domain/range/counters/budget and close-window validity; at most the cumulative delta; replay / overclaim / expired claim
+lane's provider, directly or through an authorized proxy dispatching as the provider; fixed payee
+signature/domain/range; strictly increasing sequence and nondecreasing counters; exact pinned-tariff amount above paid and within budget; Closing requires known finalized height ≤ deadline regardless of signing time; only the cumulative delta; replay / overclaim / expired claim / unknown clock
 ServicePaid
 close_service_lane(lane) / finalize_service_lane(lane)
 payer to close; any caller to finalize
-stop new authorization; refund only after voucher claim deadline; unauthorized / claims pending
+fixed boundary at close inclusion or earlier reservation end; pinned deadline = boundary + claim window; preserve slot and escrow; refund exactly remaining escrow only with known finalized height > deadline; unauthorized / claims pending / unknown clock
 ServiceLaneClosing / ServiceLaneClosed
 Appendix H — Conformance & Implementation-Status Matrix
 The single home for implementation status (kept out of the normative body, §0). Status legend:
@@ -4910,7 +5002,7 @@ Genesis airdrop funding and grants (§8.2)
 PARTIAL (genesis bridge absent; existing grant calls mint)
 scripts/python/utils/genesis_allocator.py ; airdrop-vesting · #1175
 Airdrop claims, unlock schedule, and locked compute spend (§8.2 R8.7, R8.8)
-PARTIAL (claims use finality and locked compute spend is wired; the pallet still vests every tier linearly with the retired miner performance adjustment and update_miner_performance , and lets any tier spend locked principal; no genesis quarter, earn-to-unlock credit, or Validator freeze and daily release. Miner self-stake over a still-frozen grant rides on overlapping AirdropVesting and MinerSelfStake freezes, but miner-slashing and validators lower only their own stake freeze before transferring proceeds, so a slash that reaches frozen grant principal fails today)
+PARTIAL (claims use finality and locked compute spend is wired; the pallet still vests every tier linearly with the retired miner performance adjustment and update_miner_performance , and lets any tier spend locked principal; no genesis quarter, earn-to-unlock credit, or Validator freeze and daily release; no Agent spend credit or spend cap, and compute-channel refunds of locked-funded escrow return free balance instead of frozen principal. Miner self-stake over a still-frozen grant rides on overlapping AirdropVesting and MinerSelfStake freezes, but miner-slashing and validators lower only their own stake freeze before transferring proceeds, so a slash that reaches frozen grant principal fails today)
 airdrop-vesting ; agent-wallet ; compute-channel · #1175
 Ghost Tasks: encrypted issuance + known-answer correctness canary
 LIVE
@@ -4941,11 +5033,14 @@ Agent-economics invariants (INV-02, fail_task , session nonce, payout atomicity)
 LIVE
 PR #50
 INV-S03 pallet allowlist; INV-S05 immediate revocation
-PARTIAL: direct-call allowlist and revocation LIVE; nested Utility calls unchecked
-session_keys::extract_pallet_name uses outer GetCallMetadata ; revoke_session sets active = false · #1949
+LIVE: direct calls checked; known runtime dispatch wrappers rejected for every session; revocation immediate
+session_keys::execute_via_session rejects Utility , Proxy , Multisig , Sudo , Scheduler , EmergencyOverride , and the session-key pallet itself (runtime name FlopSessionKeys ); revoke_session sets active = false · #1949
 Session G_n plausibility gate + authenticated submitted-turn sum
 LIVE arithmetic/authentication; execution guarantee GAP (E.43/E.44)
 GnSink::validate_session_gn ; verified_work_from_turns · #455
+Current-profile channel payment without public work credit (R11.2b)
+LIVE payment-only; future audited credit and historical recovery OPEN (E.44)
+payout_settlement ; payout_forward_settlement ; resolve_unrecoverable_transcript_inner ; runtime cooperative_work_credit tests · task 1494 (decision ID pending)
 Sessions: cooperative path has 2 primary inclusions; variable turn/path/evidence cost; reserved capacity
 LIVE mechanics; capacity mechanism PENDING; serialized bytes PARTIAL; withdrawal PROPOSED (ratification pending); benchmark/network GAP (E.44/E.46)
 pallet_compute_channel · D-0403/D-0502/#1496
@@ -5113,4 +5208,5 @@ Settlement verifiers ( 160–170 ) — zkVerify aggregation, not inference proof
 common (160), groth16 (161), risc0 (162), ultraplonk (163), plonky2 (165), fflonk (166),
 sp1 (167), ultrahonk (168), ezkl (169), tee (170).
 FLOP Network · Project intro
-Draft · Updated 2026-09-30
+GPU market ↗
+Draft · Updated 2026-10-05

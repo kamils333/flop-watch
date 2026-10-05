@@ -1,14 +1,16 @@
 Cheating must not pay: the challenge game — FLOP Network
 PROJECT INTRO
 Overview
+Whitepaper
+Testnet
+Airdrop
+Roles ▾
 Miner
 Validator
 Agent
 Verification
 Revenue model
-Teaser
 Yellow paper
-GPU market ↗
 Economic security · Draft design
 Cheating must not pay: the challenge game
 FLOP never re-runs inference to trust it. Every session leaves commitments that stay challengeable for a fixed window; a lottery and bonded disputes re-check slices of the work; an upheld fraud verdict burns 100% of the miner's stake. The game is sized so cheating loses money in expectation even when most single cheats slip through.
@@ -66,4 +68,5 @@ The cheap check is re-run — today by a sampled validator; under the ratified c
 04 / Verdict
 Pass: the miner keeps payment and a frivolous challenger forfeits its bond. Fail or silence: 100% slash, agent refunded, miner ejected.
 FLOP Network · Project intro
-Draft · Updated 2026-09-30
+GPU market ↗
+Draft · Updated 2026-10-05

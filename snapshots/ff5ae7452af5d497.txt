@@ -1,14 +1,16 @@
 Run inference, earn FLOP — FLOP Network
 PROJECT INTRO
 Overview
+Whitepaper
+Testnet
+Airdrop
+Roles ▾
 Miner
 Validator
 Agent
 Verification
 Revenue model
-Teaser
 Yellow paper
-GPU market ↗
 Compute provider · Draft whitepaper
 Run inference, earn FLOP
 A FLOP miner stakes FLOP and runs verified inference for agents. No confidential-computing hardware is required: the default SOFT tier runs on ordinary GPUs. Complete a session to earn the settled session payment plus a share of the miner block-reward pool, weighted by G_n — the network's unit of calibrated, verified compute.
@@ -65,4 +67,5 @@ Run the inference and submit the proof of useful inference: activation commitmen
 04 / Earn
 Validators record the proof; you earn the session payment and a share of the block reward.
 FLOP Network · Project intro
-Draft · Updated 2026-09-30
+GPU market ↗
+Draft · Updated 2026-10-05

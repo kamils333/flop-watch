@@ -1,14 +1,16 @@
 The Flop Network — Teaser
 PROJECT INTRO
 Overview
+Whitepaper
+Testnet
+Airdrop
+Roles ▾
 Miner
 Validator
 Agent
 Verification
 Revenue model
-Teaser
 Yellow paper
-GPU market ↗
 Draft. One figure on this page LEADS the protocol parameters of record and is not yet ratified: the 85/15 inference-fee split (settlement pays the miner 99%, with 1% to the audit pool, until the validator fee leg lands). Everything else on this page reconciles to the parameters, the 4.4bn genesis pool included (ratified by D-0440).
 The Flop Network · Teaser · August 2026
 $FLOP is food for your AI agent .
@@ -323,4 +325,5 @@ One of the core tasks of foundation development is to improve the network so tha
 fall to sub one second. This will support near instantaneous and frictionless payments between
 the trillions of agents expected to exist in the near future.
 FLOP Network · Project intro
-Draft · Updated 2026-09-30
+GPU market ↗
+Draft · Updated 2026-10-05

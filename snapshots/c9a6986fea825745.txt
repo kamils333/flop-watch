@@ -1,14 +1,16 @@
 Validators secure the network — FLOP Network
 PROJECT INTRO
 Overview
+Whitepaper
+Testnet
+Airdrop
+Roles ▾
 Miner
 Validator
 Agent
 Verification
 Revenue model
-Teaser
 Yellow paper
-GPU market ↗
 Security base · Draft whitepaper
 Validators secure the network
 A FLOP validator stakes FLOP to build blocks of inference proofs, store model weights in the data-availability layer, and govern the network. The active set shares 10% of block rewards.
@@ -53,4 +55,5 @@ Keep model weights available in the data-availability layer.
 04 / Govern
 Vote on FIPs; most need two-thirds of the active set.
 FLOP Network · Project intro
-Draft · Updated 2026-09-30
+GPU market ↗
+Draft · Updated 2026-10-05

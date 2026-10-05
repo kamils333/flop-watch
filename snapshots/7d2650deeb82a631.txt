@@ -1,14 +1,16 @@
 The currency of the agentic economy — FLOP Network
 PROJECT INTRO
 Overview
+Whitepaper
+Testnet
+Airdrop
+Roles ▾
 Miner
 Validator
 Agent
 Verification
 Revenue model
-Teaser
 Yellow paper
-GPU market ↗
 Project intro · Draft whitepaper
 The currency of the agentic economy
 FLOP is the proof-of-useful-inference blockchain and native currency for the agentic economy. Agents pay miners in FLOP to run inference, converting currency directly into compute and intelligence.
@@ -53,4 +55,5 @@ The miner completes the inference and submits the proof of useful inference.
 04 / Settle
 Validators include the proof hash in a block; the miner earns the session payment and a share of the block reward.
 FLOP Network · Project intro
-Draft · Updated 2026-09-30
+GPU market ↗
+Draft · Updated 2026-10-05
