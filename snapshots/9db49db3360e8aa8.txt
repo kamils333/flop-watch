@@ -5011,8 +5011,8 @@ Emission/halving/subsidy/committee premium
 LIVE
 block-rewards , flop-subsidy · D-0436/D-0421/D-0408/D-0435
 Reward liquidity on issue (§9.1 R9.13)
-PARTIAL (the validator leg still auto-compounds into locked stake)
-block-rewards · #1356
+PARTIAL (the miner and validator legs and the Labs/Foundation subsidy pay liquid since #2255; the agent and staker legs accrue in pool accounts until E.40)
+block-rewards , validators · #1356
 Tx-fee split (10 burn / 90 author live; 80/10/10 target)
 PARTIAL
 BurnFees / AllFeesToAuthor ; target #1945

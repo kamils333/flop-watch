@@ -194,8 +194,10 @@ deliberately separate — the reserve's remaining 0.64B is handed out over eight
 is minted at genesis and sits locked in a reserve address until then, rather than appearing from
 nowhere. Only block rewards create tokens after genesis.
 The implied price divides by float, not by that total. 3.94B of the TGE supply is locked: the
-whole 1.2B agent pool (spendable only on inference, so it unlocks by being spent — 40M/month through month
-12, then 30M/month), the 1.2B validator bond (frozen until the first halving), the 0.64B of reserve not yet
+whole 1.2B agent pool (spendable only on inference; every 3 FLOP spent unlocks 1, D-0522, so it drains as
+agents buy compute: the calculator follows the workbook's base-case total drain, 40M/month through month 12,
+then 30M/month, of which three quarters is spent on compute and one quarter unlocks — a projection, since
+the protocol sets no pace), the 1.2B validator bond (frozen until the first halving), the 0.64B of reserve not yet
 distributed (80M per half-year season), and 0.90B of the miner airdrop. The miner airdrop unlocks only
 against inference served : one FLOP for every FLOP the airdropped miners earn from settled sessions,
 counted once the 7-day dispute window has passed; block rewards do not count (D-0517). The calculator
