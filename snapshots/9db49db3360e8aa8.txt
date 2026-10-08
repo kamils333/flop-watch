@@ -1121,7 +1121,7 @@ clamped to the E.54 per-epoch step bound around the previous tariff and to any g
 and ceiling; a validator that does not declare capacity MUST NOT vote. If declared free
 capacity has stayed below the E.54 demand headroom for the E.54 number of consecutive epochs, the
 tariff MUST step up by the bound regardless of votes; with no declarers the epoch MUST
-admit no new reservations. Reservation escrow MUST equal C_rent = Σ_i ceil(c_i × T × p / q)
+admit no new reservations. Reservation escrow MUST equal C_rent = Σ_s ceil(c_s × T × p / q)
 at the open epoch's tariff within the payer's signed cap; each write MUST be funded with F
 per assigned provider, so C_store = C_rent + Σ_writes n × F . An object's encryption/coding
 padding MUST count toward the reserved bytes it occupies, and the profile MUST disclose the
@@ -1129,24 +1129,35 @@ encoding and reconstruction threshold. F MAY be zero; it MUST cover all one-time
 ingest/activation work for one write. Scheduled audits, repair, checkpoints and bounded terminal
 retention MUST be included in rent. Rent MUST accrue on reserved bytes whether or not they
 are occupied. A reservation's rates MUST stay fixed for its term; extension MUST use the
-tariff of the epoch in which it is funded and MUST NOT silently repeat setup charges.
+tariff of the epoch in which it is funded and MUST NOT silently repeat setup charges. Each
+extension MUST fund a separate tranche within its signed payer cap. For slot s with c_s
+reserved bytes, tranche k covering term positions [S_k, S_k + L_k) at p_k/q_k MUST
+hold B_sk = ceil(c_s × L_k × p_k / q_k) ; tranches MUST NOT overlap. Monetary products,
+ceilings, sums and differences MUST use checked arithmetic and fail closed on overflow,
+underflow or a zero denominator.
 Settlement MUST NOT require a token-price oracle. Voting MUST NOT be represented as proof
 of truthful costs or sufficient capacity; voluntary capacity declaration and the step rule are the
 clearing mechanism. Tariff selection MUST NOT relax R5.4d's placement, capacity, or collateral
 conditions.
 R5.4f — Earnings and conservation. Rent MUST be released from escrow by the chain per
 epoch, without a provider claim, to each assigned provider whose audit and checkpoint state for that
-epoch is accepted under the E.54 profile; for provider i , cumulative released rent after t_i
-accepted blocks MUST be R_i(t_i) = ceil(c_i × t_i × p / q) , where t_i counts
-non-overlapping accepted service blocks across every assignment segment of that provider, bounded
-by the contracted duration. Rounding MUST apply once to this cumulative amount, never per
-segment or per epoch: a release MUST transfer only R_i(t_i) − R_i(t_i′) . Because R_i is
-monotone and R_i(T) = ceil(c_i × T × p / q) , one provider's releases sum to at most its term
-amount. Rent segments MUST have budgets whose sum is at most C_rent ; a replacement provider
-MUST be settled by its own cumulative counter within the unallocated remainder of the segment it
-replaces, and repair MUST NOT increase the payer's cap. Failed or unresolved service intervals
-MUST NOT earn rent; the E.54 challenge window MUST elapse before a release is final, and
-accrued-but-unreleased rent MUST remain forfeitable under R5.4j. A setup fee MUST be paid
+epoch is accepted under the E.54 profile. Each slot and funding tranche MUST use one
+position-indexed accumulator R_sk(τ) = ceil(c_s × (τ − S_k) × p_k / q_k) for
+S_k ≤ τ ≤ S_k + L_k . An accepted interval [a,b) within that tranche MUST earn its
+historical slot holder exactly R_sk(b) − R_sk(a) ; an interval crossing a tranche boundary
+MUST be split there and use each tranche's own tariff. Each position MUST be credited at
+most once. Rounding MUST NOT restart for an epoch, assignment segment or provider identity;
+the index MUST be the position in the contracted term, never the number of accepted blocks.
+Replacement MUST preserve the slot/tranche accumulators and the replaced provider's
+earned-but-unreleased entitlement to its own positions, subject to R5.4j forfeiture; it
+MUST NOT transfer that entitlement or earlier failed positions to the replacement. Failed,
+unserved or forfeited interval deltas MUST remain in escrow for refund to the payer at close.
+Unresolved intervals MUST NOT release rent; the E.54 challenge window MUST elapse before
+a release is final, and accrued-but-unreleased rent MUST remain forfeitable under R5.4j.
+Per-slot paid + held MUST NOT exceed Σ_k B_sk , where held is outstanding rent reserved
+for accepted or unresolved historical intervals. Close MUST settle surviving entitlements
+before refunding Σ_k B_sk − paid − held per slot; it MUST NOT refund a live hold. Repair
+MUST NOT increase the payer's cap. A setup fee MUST be paid
 through the payer's ServiceLane voucher (R5.4g) at most once per write, provider and object, and
 MUST become earned only after the write's activation receipts and challenge window; failed or
 timed-out activation MUST refund it. Voluntary deletion after valid activation MUST NOT
@@ -1380,7 +1391,11 @@ Rationale & sources (non-normative)
 D-0506 narrows D-0412's no-fee rule only for paid application objects; D-0512 scopes its
 activation gate to admit an unratified profile on development networks (R5.4q). D-0519 defines
 the fixed lane-close boundary, finalized-prefix claim deadline, bounded post-close exposure and
-provider-only redemption. Design, pricing examples,
+provider-only redemption. D-0524
+supersedes per-provider cumulative ceilings with slot/tranche position deltas, preserving historical
+entitlements and refunding failed or forfeited deltas to the payer. Its
+seven regression vectors are the implementation
+handoff for rent settlement and the money-path corpus. Design, pricing examples,
 threat assumptions, and validation plan:
 agent-memory-storage-market.md and the
 economics and traffic review; the agent-facing flow and
@@ -1388,6 +1403,15 @@ cost guide is docs/storage/agent-memory.md. Existing placement and
 availability limits remain in da-sovereign-validator-design.md
 and prepublication-evidence.md. Implementation status:
 Appendix H .
+Draft unbounded accounting, authority and historical-liability contracts are scoped in
+paid-storage-proofs.md and the
+per-requirement attribution index.
+They assume authenticated event validation and explicit progress; they are not physical availability,
+deployed cipher security or implementation refinement. The c=1, T=2, p/q=1/2 replacement example
+exposes the superseded independent-provider rule: 2 owed against escrow 1. Under D-0524,
+A earns 1 for [0,1) and B earns 0 for [1,2) , with zero refund after full service.
+Slot/tranche deltas conserve funding regardless of release order; every contiguous interval within a tranche differs
+from its exact rational share by strictly less than one base unit. The contracts are not yet composed into the system capstone.
 6. Base-Layer Primitives & Agent Autonomy
 6.1 Primitives
 FLOP's economic layer is account/nonce-based Substrate (zero UTXO). The available primitives:
@@ -1928,7 +1952,9 @@ REFUNDED
 has-station implements create/redeem/refund_htlc and create_cross_chain_htlc .
 10.1 Requirements
 R10.1 — Local atomicity & conservation. Each FLOP-leg hashlock H = SHA256(s) MUST permit at
-most one of redeem/refund, conserve locked funds, and forbid double-claim. End-to-end cross-chain
+most one of redeem/refund, conserve locked funds, and forbid double-claim. The shipped
+htlc_burn_share_ppt is zero; timeout resolution preserves
+the full locked principal under this setting. End-to-end cross-chain
 completion is conditional on the named pair's finality, inclusion, preimage, timeout, identity, fee,
 and relayer assumptions in §10.2–§10.3; it is not an unconditional atomicity guarantee.
 R10.2 — Timelock symmetry. After converting the foreign duration to one-second FLOP blocks,
@@ -1954,11 +1980,18 @@ that this allowlisted account is the intended counterparty because an order reci
 the runtime call.
 R10.5 — Multi-block settlement. A long generation MUST lock an estimated max G_n and settle
 the actual amount at redemption from the attested token count; timeout auto-refunds.
+The dormant nonzero timeout-burn implementation is a proposal (D-0523), pending ratification
+and a separate runtime upgrade. It is not an activated economic rule or a fee-floor guarantee.
 10.2 Chain-pair qualification
 The FLOP-leg state machine and each counter-chain component are distinct. Pair-level completion depends
 on unresolved choices for direction, chain/asset/participant binding, per-leg finality and observation,
 timeout orientation and margins, recovery, and transaction inclusion. E.48 tracks those choices and the
 evidence needed to qualify a named pair; Appendix H records implementation status.
+The initial-publication claim for FLOP/native BTC, FLOP/native NEAR and FLOP/NEP-141-on-NEAR is
+target-only in the counter-chain-reveal → FLOP-relay direction. A timeout enables refund; it does
+not by itself extinguish a hashlock claim. Completion and refund targets therefore depend on both
+chains' inclusion and terminal-transition ordering, including counter refund before a late claim.
+No deployed chain-pair completion guarantee is asserted.
 10.3 Incentive robustness
 Plain HTLC is cheap to attack (MAD-HTLC): a rational counterparty can bribe fee-maximizing block authors
 to withhold an honest redeem/refund until the timelock flips. A finalized-prefix refund removes one local
@@ -3026,6 +3059,10 @@ htlc_timelock_symmetry_safety_margin_percent
 20 percent
 §10.1
 Minimum foreign-chain HTLC safety margin as a percentage of the foreign duration, after converting it to one-second FLOP blocks.
+htlc_burn_share_ppt
+0 ppt
+§13.0
+Share of a finalized post-timeout HTLC resolution burned before payout.
 btc_block_time_flop_blocks
 600 blocks
 §10.1
@@ -4227,8 +4264,10 @@ participant/recipient and hashlock binding, preimage owner/reveal path, timeout 
 per-leg finality and timely-inclusion assumptions, relayer failure recovery, and the fee/inclusion premise
 required by HtlcIncentives::collusion_deterred . Closure evidence must exercise both legs under the
 ratified profile and record timestamps, finality identifiers, and hashed raw RPC/log inputs. Placeholder:
-FLOP-leg conservation and mutually exclusive redeem/refund are supported; every end-to-end cross-chain
-atomicity claim remains PENDING and must not be presented as conforming. Home: §10. Blocking:
+FLOP-leg conservation and mutually exclusive redeem/refund are supported; the initial-publication
+disposition for every implemented pair/direction is target-only , with cross-leg loss/stall
+counterexamples preserved in the pair evidence. Pair conformance
+remains PENDING and must not be presented as a deployed guarantee. Home: §10. Blocking:
 chain-pair design, implementation, and closure evidence. Tracking: #1498.
 E.49 — Independent-demand and value-at-risk model [TBD] . Model miner+agent+validator coalitions,
 self-dealing genuine work, reward recycling, subsidy cliffs, audit outage, adverse FLOP price, attacker
@@ -4371,17 +4410,19 @@ message domains and cross-language vectors; ciphertext/chunk/erasure/key-wrappin
 revocation, lane-close and key-recovery boundaries; the funding-pinned lane claim window
 lane_claim_window_blocks and its residual post-close budget exposure; custody/audit proofs with unpredictable challenges,
 selection/standing and objective fault adjudication; activation, service, challenge, repair and terminal
-retention windows; collateral reservation, replacement budgets, slash/compensation disposition; and
+retention windows; collateral reservation, encoding of slot/tranche budgets, slash/compensation disposition; and
 capacity, object/request/credit limits with benchmark-backed tariff economics. The profile MUST
 separate client encryption obligations from validator-checkable envelope predicates, and pin per-write
 setup entitlement, the setup-fee floor (when F = 0 is admissible given R5.4e's one-time-work
-coverage), cumulative rounding per provider, take-or-pay reservations with capacity reuse and
+coverage), encoding and bounds for R5.4f's per-slot/tranche position accumulators and historical
+entitlements, take-or-pay reservations with capacity reuse and
 transfer semantics, reservation cardinality per payer (one active reservation or one per term, and
 whether terms may overlap; §1.1 vs F.7), fixed service-lane tariffs with advanced request fees, the
 head quorum and whether any two head quorums of one provider group must share a signer ( 2q > n ),
 sequencer deadline and failover order, checkpoint cadence and grace, the audit-rate
 inequality p_a × c_r ≥ c_s and any one-time shard-derivation proof at object activation, bond
-netting against held-back earnings, separate fault remedies, and replacement budget semantics. It MUST
+netting against held-back earnings, and separate fault remedies. The rounding and replacement
+entitlement rule is fixed by R5.4e/f; no tariff, bond or audit-rate value is ratified here. It MUST
 pin aggregate attempted-work/traffic/credit accounting, retry bounds, restart behavior, monotonic-time
 replenishment and protected protocol reserves, including failed admission and repair paths. Placeholder: paid storage disabled (outside the R5.4q development-network scope, D-0512); no numerical launch rates, compensation
 guarantee, or continuous-availability claim. The activation profile MUST enumerate each new
@@ -4434,6 +4475,11 @@ evidence/wire-format-v1.json , validated by
 evidence/wire-format-v1.schema.json . Generate or check it with
 uv run --script evidence/generate-wire-format-vectors.py [--check] ; Rust, TypeScript, and Python tests
 consume that same file.
+Rationale & sources. This corpus checks wire-format conformance only; Appendix F does not
+discharge money-path conformance. Amount transitions have a separate
+money-path-v1 corpus and coverage notes. Landed cases pin their
+yellowpaper commit and decision ID and check balances, events and storage through the pallet runner;
+unresolved payout alternatives remain pending under their decision owners.
 F.0 Codec and rejection profile
 Fixed unsigned integers are exactly u8 / u16 / u32 / u64 / u128 , little-endian. Encoders MUST
 reject negative or overflowing inputs; no saturation, truncation, floating-point conversion, or rounding
@@ -4629,8 +4675,8 @@ CapacityDeclaration (on-chain)
 provider, epoch, offered encoded bytes, assigned encoded bytes, collateral reserved, vote
 consent to assignment; capacity and collateral not reused across simultaneous obligations; vote counted only with a declaration
 CapacityReservation (on-chain)
-reservation id, payer, tariff version, reserved encoded bytes per provider, assignment history/generation, activation/end, escrow, per-provider cumulative rent counters and segment budgets, namespace count, transfer history, termination cause, collateral reservations and held-back rent, state, claim deadline
-conservation; take-or-pay; one per payer per term; fault-claim precedence; no overlapping billable assignments
+reservation id, payer, reserved encoded bytes per slot, assignment history/generation with slot holder and term-position bounds, activation/end, escrow, per-slot funding tranches (start, length, pinned tariff, ceiling budget), credited interval positions and historical provider entitlements, namespace count, transfer history, termination cause, collateral reservations and held-back rent, state, claim deadline
+conservation per slot/tranche; R5.4f position deltas; failed/forfeited deltas refund the payer; take-or-pay; one per payer per term; fault-claim precedence; no overlapping billable assignments
 ServiceLane (on-chain)
 payer, provider, reservation, lane nonce, tariff version, fixed budget, redeemed sequence/writes/bytes/requests/amount, policy epoch, pinned claim window in blocks, close boundary, claim deadline, state
 lane budgets partition held funds; one tariff per cumulative counter set; shared by all namespaces and delegates; fixed close boundary and finalized-prefix deadline; no refund before valid claims expire; identifiers never reused; provider reassignment preserves claims
@@ -4805,16 +4851,16 @@ one per provider per epoch within grace; duplicate / late / conflicting
 CheckpointPosted ; late or missing after grace is a fault
 (protocol action, no extrinsic) rent release per epoch
 block execution
-provider's audit and checkpoint state accepted for the epoch; challenge window elapsed; cumulative delta only
-RentReleased
+historical slot holder's audit and checkpoint state accepted for the interval; challenge window elapsed; uncredited term positions; per-slot/tranche R_sk(b) − R_sk(a) only; checked arithmetic
+RentReleased to the interval's holder, including after replacement
 challenge_storage(reservation, generation, evidence)
 profile-authorized challenger; anyone for equivocation
 objective evidence: failed audit, missing custody receipt after the activation window, missing checkpoint after grace, or conflicting receipts/checkpoints; applicable bond/standing; stale assignment / invalid evidence
 StorageChallenged ; profile-bound RepairAssigned / StorageFault / EquivocationSlashed
 finalize_reservation(reservation)
 any caller, for an expired or failed reservation
-finalized cause-bound end; only after bounded claims and liabilities close; claims pending
-ReservationClosed , fault remedy where applicable, surplus return and prune authorization
+finalized cause-bound end; only after bounded claims and liabilities close; settle surviving historical rent entitlements; no live holds; checked per-slot refund Σ_k B_sk − paid − held ; claims pending
+ReservationClosed , fault remedy where applicable, failed/unserved/forfeited rent and surplus returned to payer, prune authorization
 set_object_policy(namespace, expected_epoch, policy_commitment)
 owner
 monotonic finalized epoch and bounded policy; stale epoch / unauthorized
@@ -4944,8 +4990,8 @@ Paid encrypted agent objects, memory heads, capabilities, storage escrow, and re
 PLANNED; ACTIVATION BLOCKED by E.54/E.47 outside the R5.4q development-network scope
 D-0506, D-0512; target: pallets/pallets/da-registry/ , services/da-validator/ , TS/Python SDKs; #1564, #1565, #1566, #1567, #1568, #1569; gated development slice pallets/pallets/paid-storage/ #1832–#1842
 Paid-storage Lean accounting, authority, and historical-liability invariants (§5.4)
-PLANNED; existing protocol-DA theorems do not discharge these claims
-target: lean-proofs/FlopSpecs/ ; #1570
+PARTIAL: unbounded draft contracts and countermodels; slot/tranche rounding ratified by D-0524; full composition and runtime conformance PENDING
+lean-proofs/FlopSpecs/PaidStorage{Arithmetic,Settlement,Liability}.lean , PaidMemoryAuthority.lean ; #1570; D-0524/#1965 rounding disposition, E.54 ratification #1565, payout #1837, conformance #1569; existing protocol-DA duty proofs do not discharge paid liability
 Paid-storage Quint lifecycle, adversary, and conformance models (§5.4)
 PLANNED; no paid-storage model results yet
 target: formal-specs/da/ ; #1571
@@ -5011,8 +5057,8 @@ Emission/halving/subsidy/committee premium
 LIVE
 block-rewards , flop-subsidy · D-0436/D-0421/D-0408/D-0435
 Reward liquidity on issue (§9.1 R9.13)
-PARTIAL (the miner and validator legs and the Labs/Foundation subsidy pay liquid since #2255; the agent and staker legs accrue in pool accounts until E.40)
-block-rewards , validators · #1356
+LIVE (validator earnings and sponsored-stake payouts are liquid, like the miner leg and the Labs/Foundation subsidy; earnings do not grow stake or its freeze. The agent and staker legs accrue in pool accounts until E.40 ratifies their distribution. The +9%/year baseline, capped at 1% of issuance, and max(baseline, ValueCoupledStakeFloor) eligibility floor remain independent: unchanged stake can fall below the growing floor)
+block-rewards → runtime ValidatorConsensusRewardSplit → validators ; flop-subsidy · #1356
 Tx-fee split (10 burn / 90 author live; 80/10/10 target)
 PARTIAL
 BurnFees / AllFeesToAuthor ; target #1945
@@ -5024,7 +5070,7 @@ Requirement / mechanism
 Status
 Code path · tracker
 FLOP-leg HTLC create/redeem/refund; cross-chain pair profiles
-LIVE local mechanics; pair conformance GAP — PENDING E.48
+LIVE local mechanics; all implemented pair directions target-only — conformance PENDING E.48
 has-station ; pair qualification #1498
 Finality-safe FLOP refund; permissioned FLOP relayer gate
 LIVE local mechanics; pair-level binding/finality PENDING E.48
