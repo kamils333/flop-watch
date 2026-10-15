@@ -745,8 +745,8 @@ Pack all weight shards + index + config into one read-only EROFS image with a dm
 (4 KB blocks). The root hash is the commitment; the kernel verifies every block on read and
 faults on mismatch, so the engine can only read the committed weights. The reproducible packer is
 [tools/modelpack] .
-The miner CVM MUST extend the root into RTMR3 (or measure it via kernel cmdline into MRTD) so it
-appears in the signed quote and flows into report_data .
+The miner CVM MUST extend the root into RTMR3 as a TDX event-log entry so it appears in the
+signed quote and flows into report_data . No other register or measurement path is accepted.
 The chain stores expected roots per (model, precision) in pallet_model_registry and MUST
 accept a TEE proof only if the quote's measured root ∈ registry (fail-closed Vk::V3 ; the dstack
 verifier parses the TDX event log, replays it to the quote's RTMR3, and requires the registry root
@@ -1842,12 +1842,14 @@ exactly. The validator cohort is definitionally the aggregate bond —
 validator_min_stake ×
 validator_active_set_cap — so, when genesis parameters are
 chosen, a change to the bond floor moves this cohort and therefore genesis_supply (D-0440).
-R9.5 — Committee premium. The validator 10% pool MUST NOT be increased by an inference
-surcharge or a second mint. It is split inside the pool with weight
-stake_i × (1.1 if i ∈ current finality committee else 1.0) , integer dust assigned deterministically
-so payouts sum exactly to the pool. This holds unchanged under the four-way split: the agent and
-staker legs are carved out of the miner residual ( miner_share_ppt
-900 → 750 ppt), never added on top, so
+R9.5 — Committee premium. The block-reward validator 10% pool
+( validator_share_ppt = 100 ppt) MUST NOT be increased by an
+emission surcharge or a second mint. (The separate 15% inference-fee validator share is an extrinsic
+settlement fee leg, not an emission or dilution of block rewards; see Appendix D ).
+It is split inside the pool with weight stake_i × (1.1 if i ∈ current finality committee else 1.0) ,
+integer dust assigned deterministically so payouts sum exactly to the pool. This holds unchanged under
+the four-way split: the agent and staker legs are carved out of the miner residual
+( miner_share_ppt 900 → 750 ppt), never added on top, so
 validator_share_ppt stays at 100 ppt.
 R9.6 — Transaction-fee split. The tx-fee recipient split MUST be
 tx_fee_burn_percent_live = 10% burn ( BurnFees ), with the block
@@ -1944,8 +1946,8 @@ FlopSpecs/HalvingBoundary.lean . Status:
 Appendix H .
 10. HTLC Atomic Swap
 lock funds behind H = SHA256(s)
-redeem(s) where SHA256(s) = H, before T_lock
-timeout, T_lock expires
+redeem or relay valid preimage
+refund request after finalized timeout
 CREATED
 SETTLED
 REFUNDED
@@ -2030,13 +2032,13 @@ session spending MUST be ≤ the session cap
 agent_transfer checks remaining_session_cap() ( SessionCapExceeded )
 fail_task authority
 only an authorized reporter, rate-limited, MUST fail a task
-FailTaskAuthority + per-reporter rate limit ( Unauthorized , FailRateLimitExceeded )
+none: the per-task path and its fail_task call were removed (Appendix H.5), so this rule binds no current call
 INV-S01 / session nonce
 a session nonce MUST be monotonic (anti-replay)
 SessionInfo.nonce validated + incremented per use ( InvalidSessionNonce )
 INV-M06 / payout atomicity
 a miner→validator→burn payout MUST be all-or-nothing
-distribute_from_escrow() wraps payout in with_storage_layer()
+compute-channel payout_settlement : a failed miner transfer, agent refund or burn reverts the settling extrinsic, so no leg lands without the others
 Supply
 emission cap + halving monotonicity MUST hold
 tokenomics-supply.qnt
@@ -2123,10 +2125,16 @@ Settlement bytes and verification cost are not constant: settle carries and veri
 signatures, and Merkle paths; pairwise duplicate scanning is quadratic in submitted turn count. The
 inference stream remains off-chain, but throughput depends on encoded bytes, runtime weight, evidence
 calls, committee load, and GPU capacity ( E.46 ).
-R12.1a — Reserved capacity, not metered refund. Escrow at open_channel is the payment for
-reserved capacity; settle pays the reserved amount in full ( no settlement fee ). Under-use MUST
-NOT be refunded. The only refund paths are a non-delivery timeout, an upheld fraud dispute, or a
-failed/early-terminated session (R12.1d).
+R12.1a — Reserved capacity and fee split. Escrow at open_channel is the payment for
+reserved capacity; under-use MUST NOT be refunded. The only refund paths are a non-delivery
+timeout, an upheld fraud dispute, or a failed/early-terminated session (R12.1d). At settlement
+( settle , certificate_settle , or force_settle → finalize ), the settled payable amount MUST
+be split: inference_fee_miner_share_ppt = 85% to the miner,
+and inference_fee_validator_share_ppt = 15% to the
+validator pool (D-0525). The 1% audit pool earmark
+( audit_fee_split_ppm = 10,000 ppm) MUST be deducted from the 15%
+validator share to fund verification audits; the remainder of the validator leg is distributed
+intra-pool by the R9.5 weighting, liquid on issue (R9.13, D-0518).
 R12.1b — Transcript. The enclave (or, on the SOFT path, the miner session key) MUST sign each
 turn's 32 B transcript-leaf hash into a running Merkle accumulator. Appendix F.3
 is the sole leaf definition and accepted-version rule; V3 is the current TOPLOC-binding format for a
@@ -2144,13 +2152,15 @@ R12.1c — Tier-specific model binding. A HARD-tier open_channel and settle MUST
 proof's measured dm-verity root against the registry ( ModelRegistryQuery::verify_measured_root ); a
 wrong root at settle MUST reject. The SOFT profile has no TEE-measured root; its model/decode binding,
 evidence predicate, value cap, and dispute path are E.33 .
-R12.1d — Failed/early close split. On the unilateral force_settle → finalize path the miner keeps
-the two-part tariff P = BasePerTurn·n + rate_G·G_claimed (flat per-turn payment over n turns plus
-claimed reference-work converted into payment units). P is denominated in the escrow's base unit
-(10⁻¹⁸ FLOP); channel_base_per_turn and rate_G are each one
-base unit. G_n is the whole-reference-GFLOP integer from R4.4; the rate is a tariff price, not an
-assertion that one G_n equals one FLOP base unit. force_settle MUST reject with
-TariffExceedsEscrow when P > E ; it MUST NOT clamp P or create negative payout legs
+R12.1d — Failed/early close split. On the unilateral force_settle → finalize path the earned
+tariff P = BasePerTurn·n + rate_G·G_claimed (flat per-turn payment over n turns plus claimed
+reference-work converted into payment units) forms the payable session settlement, which is split
+85% to the miner and 15% to validators (with the 1% audit pool funded from the validator leg) under
+R12.1a. P is denominated in the escrow's base unit (10⁻¹⁸ FLOP);
+channel_base_per_turn and rate_G are each one base unit. G_n is
+the whole-reference-GFLOP integer from R4.4; the rate is a tariff price, not an assertion that one G_n
+equals one FLOP base unit. force_settle MUST reject with TariffExceedsEscrow when P > E ; it
+MUST NOT clamp P or create negative payout legs
 ( pallets/pallets/compute-channel/src/lib.rs::{turn_tariff_pay,verified_work_from_turns} ). Otherwise,
 the agent is refunded (1−φ)·(E−P) , and the penalty φ·(E−P)
 ( refund_penalty_phi_percent = 20%) MUST be burned/routed to
@@ -2629,8 +2639,8 @@ producing PoUI proofs, or owning a GPU or TEE: committee eligibility is verifica
 and re-execution is a checker duty (§3.5). Validators are not miners — a validator account MAY also
 register as a miner, but miner activity confers no validator eligibility.
 15.2 Onboarding (normative)
-Registration is self-signed and permissionless above the stake floor. register freezes the account's
-full reducible balance as self-stake and places the validator in ValidatorQueue , not directly in
+Registration is self-signed and permissionless above the stake floor. register freezes exactly
+effective_minimum_stake() as self-stake and places the validator in ValidatorQueue , not directly in
 ActiveValidators — promotion happens only through rotation (§15.5).
 Requirement
 Rule
@@ -2646,6 +2656,10 @@ Verification liveness (committee)
 last accepted verification duty (R15.4c; LastVerifiedWork ) within WorkRecencyWindow = 86,400 blk (24 h); else active but out of the PoUI committee
 Delegation (min 100 FLOP, ≤ max_delegators_per_miner -class bound)
 and commission follow §6.1.
+With a 20% self-stake ratio, new native delegation and sponsored backing together are admitted only
+up to four times recorded self-stake. Since registration bonds exactly the effective minimum,
+surplus free balance does not increase this capacity. The admission check does not preserve that
+ratio after a slash reduces self-stake (Appendix H).
 15.3 Duties & resource intensity
 Duty
 Cost
@@ -2726,7 +2740,7 @@ validator_rotation_interval_blocks (~30 d) plus manual
 rotate .
 R15.5. Rotation MUST eject the bottom validators_to_eject = 50
 and promote the top validators_to_promote = 50 from ValidatorQueue
-whose stake ≥ the current minimum; ejected validators serve
+whose recorded self-stake ≥ effective_minimum_stake() ; ejected validators serve
 ejection_cooldown_blocks (~7 d) then rejoin with stake topped to
 the current minimum. Ranking MUST be by stake subject to a minimum-performance floor
 (verification liveness per R15.4c + uptime), so padding the liveness signal does not improve rank
@@ -2736,6 +2750,16 @@ validator_active_set_cap = 1,000 . register admits to
 ValidatorQueue , never directly to the active set; rotation MUST promote from the queue only
 while a slot is free, so the cap bounds ActiveValidators and never registration. Queued validators
 hold stake and may do useful work; they are not finality-eligible until promoted.
+The current implementation attempts promotion in LIFO order within the requested budget and free
+slots; stake-ordered selection remains #1713. Underfunded candidates remain queued with their bond
+and backing intact. Promotion preserves stake and commission fields and resets performance and the
+joining epoch.
+A queued candidate has no in-place self-stake top-up: transferring more funds does not update its
+recorded bond, and rejoin applies only to extended-downtime kicks. A raised effective floor,
+including an annual baseline increase, can therefore defer promotion until the floor falls back or
+the operator replaces the registration. Operators coordinating replacement first arrange native
+delegation and sponsor unbonding, then deregister and register at the new minimum; deregistration
+does not enforce this backing-removal procedure. Appendix H records the missing top-up path.
 Set size. The active set is capped at 1,000 ; the finalizing committee is 100 (§15.4),
 sampled from the active set, so the two are separate bounds. Effective set size below the cap is
 governed by rotation throughput and the stake gate. Behaviour on an active set at or below the eject
@@ -3319,11 +3343,21 @@ channel_audit_forfeit_slash_ppm
 §12.1
 D-0403
 #844 publish-or-forfeit: audit-data liveness-forfeit slash floor, in ppm of the withheld settlement window's value.
+inference_fee_miner_share_ppt
+850 parts-per-thousand
+§12.1
+D-0525
+#2702 (D-0525): Executive ruling (Shu, 2026-10-14).
+inference_fee_validator_share_ppt
+150 parts-per-thousand
+§9
+D-0525
+#2702 (D-0525): Executive ruling (Shu, 2026-10-14).
 audit_fee_split_ppm
 10_000 ppm
-§12.1
+§9
 D-0403
-#846: ratified 1% (10_000 ppm) of the miner's settlement payment (the session-fee leg; yellowpaper §12.1) carved into the audit pool that pays validators for audit work.
+#846, #2702 (D-0525): ratified 1% (10_000 ppm) of the settlement payment funded out of the 15% validator fee leg into the audit pool that pays validators for audit work.
 audit_fee_per_turn
 1 FLOP
 §12.1
@@ -3780,6 +3814,14 @@ channel_audit_forfeit_slash_ppm
 ChannelAuditForfeitSlashPpm
 —
 —
+inference_fee_miner_share_ppt
+INFERENCE_FEE_MINER_SHARE_PPT
+—
+—
+inference_fee_validator_share_ppt
+INFERENCE_FEE_VALIDATOR_SHARE_PPT
+—
+—
 audit_fee_split_ppm
 ChannelAuditFeeSplitPpm
 —
@@ -4087,14 +4129,14 @@ Protocol-runway subsidy (+16 FLOP/block era 0; halves 16 → 8 → 4 → 2 → 1
 protocol mint
 Labs 8 · Foundation 8 — not participant revenue
 terminates Day 3650 (era 5), where the reward floors; 1,955,232,000 FLOP total
-Transaction fee (base+priority)·gflops/1000·precision_mult
+Chain inclusion fee = base fee + encoded-length fee + adjusted-weight fee
 tx sender
 80% miner-proxy + 10% validator share → block author (co-located until per-miner G_n attribution); tips 100% author
 10% burn ( BurnFees )
 Session escrow settle
 agent
-miner (reserved capacity)
-— (no settlement fee)
+miner 85% ( inference_fee_miner_share_ppt ) · validators 15% ( inference_fee_validator_share_ppt , of which audit_fee_split_ppm = 1% funds the audit pool; validator remainder distributed intra-pool by R9.5 weight, liquid on issue per D-0518)
+—
 Session under-use (measured < reserved)
 —
 no refund — escrow is the price
@@ -4139,6 +4181,13 @@ Delegated-loss waterfall
 slashed operator + delegators + sponsors
 operator self-stake first, then delegators pro-rata, then sponsors at the fault rate
 Foundation
+The base fee converts the extrinsic base weight with WeightToFee ; the encoded-length fee uses
+tx_length_to_fee , and the adjusted-weight fee applies the targeted fee
+multiplier (floor 1) to WeightToFee of dispatch weight, using
+tx_weight_to_fee . The tip is additional to the inclusion fee. The
+flop-poui inference-work price (base+priority)·gflops/1000·precision_mult (§4.2) is a separate
+charge. The 80/10/10 split is the ratified target; the block-author payout above is the interim
+runtime realization (§9.1 R9.6).
 Runtime-constant ⇄ SDK/explorer cross-map and the residual indexer schema cleanup
 ( reward_distributions burn_share / treasury_share / staking_share vs. the emitted
 miner_share + validator_share ) are tracked as an implementation cleanup, not a protocol decision.
@@ -4155,7 +4204,8 @@ E.8 — Value-coupled floor k + retarget cadence [TBD] . Set k in effective_mini
 slow-cadence retarget from the indexer D₂ / n_eff . Home: §11, §15.2. Blocking: #556.
 E.9 — Governance track magnitudes [RATIFY] . Sign off the protocol_upgrade track values.
 Placeholders: min_support linear 50% → 15% of ActiveIssuance ; decision period 28 d; prepare/confirm
-2 h / 24 h; decision deposit high-FLOP, magnitude TBD; enactment timelock 14 d
+2 h / 24 h; decision deposit high-FLOP, magnitude TBD (the runtime currently carries 100,000 FLOP);
+enactment timelock 14 d
 ( protocol_upgrade_enactment_timelock ) against the §1.2
 reading rule that enactment outlives the 21 d validator unbonding — sign off the value or the rule.
 Home: §14.1. Blocking: #681.
@@ -4187,15 +4237,15 @@ E.27 — Session max-duration extension + re-attestation cadence wiring [PARTIAL
 k ≤ min(Bond/v_turn, T_tcb/t_turn) is specified; in-place max-duration extension and the re-attestation
 cadence are not yet wired. Home: §12.1, Appendix C. Blocking: #682 (SPEC-025).
 E.41 — Active-set cap vs. BABE authority bound [PLANNED] . D-0437 ratifies
-validator_active_set_cap = 1,000, but the runtime cannot reach it:
-MaxAuthorities = MAX_ACTIVE_VALIDATORS = 200 , and ValidatorSessionManager::new_session passes
-the whole ActiveValidators set to pallet_session untruncated, so an active set above 200 collides
-with the authority bound. Resolve by either (a) raising MAX_ACTIVE_VALIDATORS to the cap, making every
-active validator a BABE authority, or (b) specifying a selection rule that draws the authority set as a
-subset of the active set — a third sampling layer alongside the §15.4 committee draw, and therefore
-consensus-critical. Also open in the same item: enforcing the cap on the rotation promote path (today
-only the ConstU32<10_000> storage bound applies) and aligning that bound, which is a storage-layout
-change needing a decode-compat test. Home: §15.5, §15.4. Decision: D-0437. Blocking: #1393.
+validator_active_set_cap = 1,000, and every promotion path enforces
+it, but MaxAuthorities = MAX_ACTIVE_VALIDATORS = 200 , and ValidatorSessionManager::new_session
+passes the whole ActiveValidators set to pallet_session untruncated, so an active set above 200
+collides with the authority bound. Resolve by either (a) raising MAX_ACTIVE_VALIDATORS to the cap,
+making every active validator a BABE authority, or (b) specifying a selection rule that draws the
+authority set as a subset of the active set — a third sampling layer alongside the §15.4 committee draw,
+and therefore consensus-critical. Also open in the same item: aligning the ConstU32<10_000> storage
+bound with the cap, which is a storage-layout change needing a decode-compat test. Home: §15.5, §15.4.
+Decision: D-0437. Blocking: #1393.
 E.42 — Committee seat-capture model [TBD] . Establish a capture bound for the implemented
 weighted-without-replacement draw over distinct eligible identities. The model must use seat count as the
 AlephBFT safety variable and cover unequal stakes, small eligible pools, stake splitting, repeated draws,
@@ -4235,30 +4285,29 @@ total_profitable_exposure < p_effective × collectible_penalty is a conditional 
 budget, not a unique-equilibrium or zero-fraud theorem. Home: §3.5, §6.1, §11.3, §12.2. Blocking:
 aggregate reservation E.22 plus a ratified payoff model. Tracking: #1495.
 E.46 — Direct/session capacity evidence [PENDING; PARTIAL EVIDENCE] . This mechanism remains open.
-Internal source-checked fixtures reproduce exact SCALE bytes for supported direct active-set/quorum
-sizes and cooperative/unilateral settlement
-over turn/path limits, a duplicate-last bundle, TOPLOC evidence publication, and dispute calls. It includes
-runtime pallet/call indices, v5 bare and v4 signed framing, signature/extension fields, compact length
-prefixes, DA references, hashes, configured Normal/Operational envelopes, and charged weights. The direct
-weight is an identified unbenchmarked stub; session weights do not parameterize path length or duplicate
-scanning. The runtime-benchmark build remains blocked by an internal dependency inconsistency (#550), so
-no benchmark/runtime hash is claimed. No disclosed network matrix or raw log exists. Detailed failure
-diagnostics and their reproducer remain private while the mechanism is pending; the public summary
-records only the fixtures' bounded scope and limitations.
-D-0502 proposes withdrawing the 125,000 B, 96/128 transaction, 48/64 lifecycle, and sub-second-finality
-figures from the v0.5 profile; ratification is pending. Home: §2.2, §5.2–§5.3, §12.1, §15.6; evidence:
-prepublication-evidence.md. Blocking: resolve #550, generate
-dedicated weights, and run the recorded committee/topology/loss/load/co-load/fault matrix with negative
-and recovery outcomes. Tracking: #1496.
-E.47 — DA availability and anti-grinding model [TBD] . Specify commitment-assignment anti-grinding,
-operator and failure-domain diversity, publisher limits, audit/repair timing, repair bandwidth,
-an upper bound on lease_end under free third-party top-up, the resolution of an audit still outstanding
-when its blob is withdrawn or pruned, and the cumulative storage/retention budget
-across the full session+challenge lifecycle. Distinguish registry freshness, audit success, and actual
-reconstruction.
-Placeholder: validator DA removes miner-only custody; availability remains conditional on the stated
-threshold and repair assumptions. Home: §3.5, §5.3, §13.0, Appendix F. Blocking: failure model, grinding
-analysis, and lifecycle recovery test. Tracking: #1497.
+Internal source-checked fixtures reproduce exact SCALE bytes for supported direct active-set/quorum sizes
+and cooperative/unilateral settlement over turn/path limits, a duplicate-last bundle, TOPLOC evidence
+publication, and dispute calls. It includes runtime pallet/call indices, v5 bare and v4 signed framing,
+signature/extension fields, compact length prefixes, DA references, hashes, configured Normal/Operational
+envelopes, and charged weights. The direct weight is an identified unbenchmarked stub; session weights do
+not parameterize path length or duplicate scanning. The runtime-benchmark build now compiles in every
+runtime flavour, but no benchmark run, dedicated flop-poui weights or runtime hash is claimed. No
+disclosed network matrix or raw log exists. Detailed failure diagnostics and their reproducer remain
+private while the mechanism is pending; the public summary records only the fixtures' bounded scope and
+limitations. D-0502 proposes withdrawing the 125,000 B, 96/128 transaction, 48/64 lifecycle, and
+sub-second-finality figures from the v0.5 profile; ratification is pending. Home: §2.2, §5.2–§5.3, §12.1,
+§15.6; evidence: prepublication-evidence.md. Blocking: run the
+runtime benchmarks, generate dedicated weights, and run the recorded
+committee/topology/loss/load/co-load/fault matrix with negative and recovery outcomes. Tracking: #1496.
+E.47 — DA availability and anti-grinding model [TBD] . Specify commitment-assignment anti-grinding
+(paid-storage provider assignment already draws delayed BABE randomness after open, §5.4; protocol-DA
+assignment is still seeded by the commitment), operator and failure-domain diversity, publisher limits,
+audit/repair timing, repair bandwidth, an upper bound on lease_end under free third-party top-up, the
+resolution of an audit still outstanding when its blob is withdrawn or pruned, and the cumulative
+storage/retention budget across the full session+challenge lifecycle. Distinguish registry freshness,
+audit success, and actual reconstruction. Placeholder: validator DA removes miner-only custody;
+availability remains conditional on the stated threshold and repair assumptions. Home: §3.5, §5.3, §13.0,
+Appendix F. Blocking: failure model, grinding analysis, and lifecycle recovery test. Tracking: #1497.
 E.48 — Cross-chain HTLC pair conformance [TBD] . Specify the exact chain and asset identifiers,
 participant/recipient and hashlock binding, preimage owner/reveal path, timeout orientation and margins,
 per-leg finality and timely-inclusion assumptions, relayer failure recovery, and the fee/inclusion premise
@@ -4288,7 +4337,8 @@ agent, nonce, model, payload, and commit inputs and reject a caller-supplied mis
 channels and stored checkpoints must retain their legacy receipt profile while new channels remain v1-only.
 R3.1's presence gate is the channel-level submit_toploc_evidence record (F.6), checked at
 settle / force_settle regardless of leaf version; a V2 leaf under a decode-policy marker satisfies
-presence but not per-turn binding, and the V2 cutoff is #1404.
+presence but not per-turn binding. SDK hosts refuse a TOPLOC-bearing V2 leaf (#1404); whether the
+runtime keeps accepting V2 under a pinned policy is decision #1594.
 Placeholder: the direct rail treats task_hash as an opaque H256, and receipt selection is safe only when
 the channel's profile marker survives the entire resume/checkpoint path. Home: §3.6, §12.1, Appendix F.
 Blocking: producer-to-validator wiring and cross-version resume-to-settlement tests. Tracking: #1500.
@@ -4356,8 +4406,9 @@ unverifiable tail" rule supersedes it, including the evidence predicate, work-cr
 disposition. Placeholder: full escrow refund on terminal unrecoverable DA. Home: §13.0, §13.2.
 Blocking: #1948.
 E.32 — Sponsored stake refund semantics [PARTIAL] . Base refundable sponsored stake landed. Still
-open: whether sponsored stake can satisfy self-stake, sponsor refund authority, reward ownership, slash
-waterfall, per-sponsor/operator caps, testnet-only flags, disclosure. Placeholder: sponsor-owned
+open: whether sponsored stake can satisfy self-stake, sponsor refund authority, reward ownership (the
+runtime records an operator-or-sponsor reward policy per position), per-sponsor/operator caps,
+testnet-only flags, disclosure. The slash waterfall is fixed in §11.3. Placeholder: sponsor-owned
 principal is slashable backing; refund only after role unbonding + finalized prefix; mainnet does not
 count sponsor stake as self-stake without a ratified decision. Home: §11, §15, Appendix C/D. Blocking:
 #683.
@@ -4398,10 +4449,10 @@ the validator cohort's activity basis, and whether activity under-counts can be 
 Validator release order of R8.7; until it is fixed, no Validator grant releases. Decide the
 disposition of Miner and Agent principal that never unlocks. Whether a fraud verdict upheld after the
 dispute window reverses unlock or spend credit follows E.44. Residual risk: once its quarter is liquid,
-a miner can buy inference from itself through an agent it controls and unlock the rest at about the
-1% audit earmark, roughly 0.75% of principal; an agent can likewise pay a miner it controls from
-locked principal, receive about 99% of it back as that miner's payout, and unlock a further third of
-the spend. No runtime common-control rule binds either (see E.49). Decide the
+a miner can buy inference from itself through an agent it controls and unlock the rest at the 15%
+validator fee leg (of which 1% funds the audit pool; D-0525), roughly 11.25% of principal; an agent can
+likewise pay a miner it controls from locked principal, receive about 85% of it back as that miner's
+payout, and unlock a further third of the spend. No runtime common-control rule binds either (see E.49). Decide the
 unallocated-remainder disposition, publication of operator-held filter inputs, and the
 genesis_reserve release controller. Home: §8.2, §9.3. Blocking: #257,
 #1175, #1354, #1357.
@@ -4451,7 +4502,8 @@ R5.4e. Accepted tariff versions
 MUST remain versioned reservation inputs; hardware costs, token conversion assumptions, and demand/margin
 estimates MUST remain operator/simulator inputs. Home: §5.4, F.7, G.4. Decision: D-0506. Blocking: profile ratification,
 economic/adversarial evidence, E.47 placement/repair evidence, and an end-to-end implementation witness.
-Tracking: #1564, #1565, #1566, #1567, #1568, #1569, #1570, #1571, #1572.
+Tracking: #1564, #1565, #1566, #1567, #1568, #1569; Lean, Quint and simulation evidence landed in
+#2397, #2142 and #2152.
 E.40 — Agent & staker leg distribution [TBD] . Specify how the
 agent_share_ppt (10%) and staker_share_ppt (5%)
 pools are paid out: the eligible set (the staker leg is defined as all FLOP stakers other than miners
@@ -4579,7 +4631,7 @@ sr25519 under the channel's agent key over channel_id ‖ turn_index:u32LE ‖ l
 counter-signs the leaf hash and both timing inputs; distinct from agent receipt v1; implemented by turn_ack_message in sdk/typescript/src/compute-channel/transcript.ts and sdk/rust-compute-channel/src/transcript.rs
 agent receipt v1
 sr25519 over "FLOP/COMPUTE_CHANNEL/RECEIPT" ‖ 01 ‖ channel_id ‖ final_root ‖ aggregate_gn:u128LE ‖ payable:u128LE
-authorizes the exact channel, root, aggregate, and settlement amount; payable is a u128LE count of 10⁻¹⁸ FLOP base units and is the gross receipt-bound settlement amount before audit and forward adjustments, derived as full reserved escrow for cooperative settle , the R12.1d tariff P for force_settle , or the stored contract_payment override for a forward channel (R12.1i); the net transfer to the miner is payable less the audit earmark, and a forward channel additionally refunds unearned availability to the buyer; current channels only
+authorizes the exact channel, root, aggregate, and settlement amount; payable is a u128LE count of 10⁻¹⁸ FLOP base units and is the gross receipt-bound settlement amount, derived as full reserved escrow for cooperative settle , the R12.1d tariff P for force_settle , or the stored contract_payment override for a forward channel (R12.1i); at settlement, payable is split 85% to the miner ( inference_fee_miner_share_ppt ) and 15% to validators ( inference_fee_validator_share_ppt ), from which the 1% audit earmark ( audit_fee_split_ppm ) is funded (D-0525), and a forward channel additionally refunds unearned availability to the buyer; current channels only
 aggregate_gn check
 checked sum of distinct submitted VerifiedTurn.g_n after signature/path verification ( verified_work_from_turns )
 MUST equal aggregate_gn ; arithmetic/authentication only (§11.2 R11.2a)
@@ -4601,7 +4653,8 @@ accepts explicit V0–V3. ChannelWireProfiles[channel_id]=1 requires receipt v1;
 only the historical untagged 96 B receipt preimage, and an unknown value fails closed. New opens write the
 decode-policy and wire-profile markers. Existing channel
 records and amounts are not rewritten. V2 remains an explicitly lower evidence format and MUST NOT be
-reported as V3/TOPLOC-bound assurance; #1404 owns removing that remaining acceptance or adding a binding.
+reported as V3/TOPLOC-bound assurance. SDK hosts refuse a TOPLOC-bearing V2 leaf (#1404); removing the
+runtime's remaining acceptance or adding a binding is decision #1594.
 R12.1j — Per-channel decode policy. At open, ChannelDecodePolicies[channel_id] pins one
 decode_policy_hash . That hash MUST be identical across every V2/V3 turn under the channel_id and
 MUST NOT vary by turn, regardless of how many agents participate in the pipeline.
@@ -4751,10 +4804,22 @@ timeout(channel_id)
 anyone (signed)
 non-delivery → full refund ( φ=0 )
 not past max_duration
-open_dispute(channel_id, turn_index, bond)
+open_dispute(channel_id, contested_turn)
 session agent or active validator
-lock channel_challenger_bond ; begin bisection
-not standing; channel not disputable
+lock channel_challenger_bond ; contest one settled turn, which the miner answers with respond_dispute
+NoDisputeStanding ; DisputeTurnNotSettled ; DisputeExists ; window elapsed; transcript unavailable
+open_bisection_dispute(channel_id, n_turns)
+session agent or active validator
+lock the challenger bond; n_turns equals the settled power-of-two leaf count (2 to MaxSettlementTurns ); begin midpoint rounds over the whole bundle
+BisectionBadTurnCount ; DisputeTurnNotSettled ; standing and window errors as open_dispute
+respond_bisection(channel_id, left_root, right_root)
+named miner (signed)
+open the two child roots, whose hash equals the interval's parent root; reset the response window
+NotAParty ; BisectionNotAwaitingResponse ; BisectionBadChildRoots ; window elapsed
+challenge_bisection(channel_id, choose_left)
+the dispute's challenger
+pick the left or right half; once one turn remains, the miner answers with respond_dispute
+NotAParty ; BisectionNotAwaitingChallenge ; BisectionRoundCap ; window elapsed
 respond_dispute(channel_id, leaf_version, turn_index, h_in, h_out, g_n, decode_policy_hash, h_ids, toploc_commitment_hash, miner_recv_ms, miner_done_ms, latency_ms, enclave_sig, merkle_path)
 miner (signed)
 select exactly one Appendix F leaf preimage; verify signature + Merkle membership
@@ -4801,6 +4866,12 @@ identity binding; change invalidates
 batch_issue_calibration_jobs(...)
 synthetic_tasks
 issuer-selected timed one-shot pack
+create_grant(miner, amount)
+work_vesting
+Root only; require the miner's non-zero finalized §7 calibration baseline and snapshot it as B_p (R8.1)
+force_create_grant(miner, amount, pledge_baseline)
+work_vesting
+Root only; explicitly bypass the finalized calibration-baseline check with a non-zero caller-supplied B_p (R8.1)
 register_miner(model_hash, gpu_model, vram_gb, tee_type) / set_measured_root
 model_registry
 model availability + measured dm-verity root
@@ -4905,8 +4976,12 @@ PLANNED: recency still written from prover credit only ( ValidatorWorkRecorder c
 validators::note_verified_work ; runtime ValidatorWorkRecorder · D-0439 · #1552/#1554
 Committee Sybil capital: self-stake vs backing
 §2.3, §15.2
-GAP: the committee gate compares total_stake (self + delegated + sponsored) with effective_minimum_stake() , and that backing is not locked as distinct capital ( delegate freezes without a balance check; sponsor_validator checks each tranche with reducible_balance(.., Force) , which ignores existing freezes; freezes overlap rather than add). Self-stake is floor-checked only at register / rejoin (queue promotion: baseline); MinSelfStakeRatio is checked only when backing is added, and a liveness slash charges self-stake first while un_jail restores without a re-check (E.42)
-validators::{delegate, sponsor_validator, register, un_jail} ; do_slash_fraction · #848
+GAP: the committee gate compares total_stake (self + delegated + sponsored) with effective_minimum_stake() , and that backing is not locked as distinct capital ( delegate freezes without a balance check; sponsor_validator checks each tranche with reducible_balance(.., Force) , which ignores existing freezes; freezes overlap rather than add). Self-stake is floor-checked at register / rejoin and from the recorded bond at queue promotion; MinSelfStakeRatio is checked only when backing is added, and a liveness slash charges self-stake first while un_jail restores without a re-check (E.42)
+validators::{delegate, sponsor_validator, register, do_rotate, un_jail} ; do_slash_fraction · #848
+Queued validator self-stake top-up
+§15.2, §15.5
+GAP: register bonds exactly the effective minimum; extra free balance does not increase recorded self-stake. rejoin tops up only extended-downtime-kicked validators, so a queued candidate below a raised floor remains deferred until the floor falls or registration is replaced. Backing admission is bounded by recorded self-stake
+validators::{register, rejoin, do_rotate, delegate, sponsor_validator} · #1967
 Three safety sub-proofs
 §2.3
 GAP: seat-capture/undersized/bootstrap bridge open (E.42)
@@ -4933,7 +5008,7 @@ PARTIAL
 presence/band code LIVE (prefill); decode coverage open, protocol-to-proof bridge + adversarial matrix GAP (E.43) · D-0431/D-0501
 Tier 3 re-execution / session dispute game
 PARTIAL
-slashing LIVE ( pallet_miner_slashing ); single-turn base LIVE; log-round bound PROVEN; multi-round midpoints PARTIAL
+slashing LIVE ( pallet_miner_slashing ); single-turn base LIVE; log-round bound PROVEN; multi-round midpoint bisection LIVE ( open_bisection_dispute , respond_bisection , challenge_bisection ); independent re-execution lane PLANNED (E.53)
 Re-execution checker lane (R3.5d: checkers re-run, validators verify + co-sign)
 PLANNED: shipped checker re-prefills inside the validator watchtower (E.53)
 compute-channel report_toploc_mismatch ; sdk/typescript/src/compute-channel/toploc-checker.ts · D-0439 · #1553
@@ -4947,8 +5022,8 @@ TEE-optional reframe (TEE-independent floor; TEE = optional HARD tier)
 DECIDED
 D-0432
 Non-TEE (SOFT) settlement lane end-to-end
-PLANNED/TBD
-E.33 · #650
+PARTIAL: SOFT calibration entry, non-attested model onboarding ( flop model onboard --soft ) and persistent non-TEE session signing keys landed; miner registration still requires a TeeType ; spot-check rate, demand-floor exclusion and checker-lane disputes open
+hw-calibration ; model-registry ; miner-worker · E.33 · #650
 H.3 Metering, sizing, DA (§4–§5)
 Requirement / mechanism
 Status
@@ -4966,8 +5041,8 @@ Per-GPU MLPerf ceiling / under-report floor
 PARTIAL
 flop_meter (activates where GPU id / token counts bound)
 G_n integer unit taxonomy
-PARTIAL: wire/settlement checks LIVE; extreme meter-overflow rejection remains open
-§4 R4.4; whole floor(F_eff/10⁹) ; direct u64 , session u128 · D-0505; #588 tracks overflow rejection
+LIVE: wire/settlement checks; the reference meter, RISC0 audit guest and SDKs reject out-of-width values instead of clamping
+§4 R4.4; whole floor(F_eff/10⁹) ; direct u64 , session u128 ; hp_poui::flop_meter::gn_from_flops ; zk-audit-guest MeterOverflow · D-0505
 Cache-aware settlement discount
 PLANNED
 v1 bills full prompt/context; proof-bound discount E.22/#1153
@@ -4987,17 +5062,17 @@ Protocol DA duty; serve-or-slash; leased weights + refundable deposit (§5.3)
 LIVE
 D-0402/D-0407/D-0412
 Paid encrypted agent objects, memory heads, capabilities, storage escrow, and retrieval vouchers (§5.4)
-PLANNED; ACTIVATION BLOCKED by E.54/E.47 outside the R5.4q development-network scope
-D-0506, D-0512; target: pallets/pallets/da-registry/ , services/da-validator/ , TS/Python SDKs; #1564, #1565, #1566, #1567, #1568, #1569; gated development slice pallets/pallets/paid-storage/ #1832–#1842
+PARTIAL on development networks only (R5.4q): the paid-storage pallet runs at runtime index 108 behind the devnet-only paid-storage-unratified feature, with the da-validator paid data plane and the TypeScript SDK; rent is released without a custody audit ( UnratifiedNoAudit ). Production ACTIVATION BLOCKED by E.54/E.47
+D-0506, D-0512; pallets/pallets/paid-storage/ , services/da-validator/src/paid/ , sdk/typescript/src/paid-storage/ ; Python SDK wire codec only; #1564, #1565, #1566, #1567, #1568, #1569; slices #1832–#1842
 Paid-storage Lean accounting, authority, and historical-liability invariants (§5.4)
 PARTIAL: unbounded draft contracts and countermodels; slot/tranche rounding ratified by D-0524; full composition and runtime conformance PENDING
-lean-proofs/FlopSpecs/PaidStorage{Arithmetic,Settlement,Liability}.lean , PaidMemoryAuthority.lean ; #1570; D-0524/#1965 rounding disposition, E.54 ratification #1565, payout #1837, conformance #1569; existing protocol-DA duty proofs do not discharge paid liability
+lean-proofs/FlopSpecs/PaidStorage{Arithmetic,Settlement,Liability}.lean , PaidMemoryAuthority.lean ; #2397; D-0524/#1965 rounding disposition, E.54 ratification #1565, payout #1837, conformance #1569; existing protocol-DA duty proofs do not discharge paid liability
 Paid-storage Quint lifecycle, adversary, and conformance models (§5.4)
-PLANNED; no paid-storage model results yet
-target: formal-specs/da/ ; #1571
+PARTIAL: lifecycle, authority, admission, rent and lane models run in CI (sampled invariants, not exhaustive); runtime refinement PENDING
+formal-specs/da/paid-deal.qnt , memory-authority.qnt , paid-storage-admission.qnt , paid-storage-rent.qnt , service-lane.qnt and siblings; scripts/python/verification/paid_storage_verify.py ( quint.yml ) · #2142; refinement #1569
 Paid-storage agent/validator market and solvency simulation (§5.4)
-PLANNED; no calibrated storage-market results yet
-target: ai-agent-simulator/src/model/ , ai-agent-simulator/julia/src/ ; #1572
+PARTIAL: TypeScript and Julia storage-market and validator-solvency models with seeded scenario results; not a launch tariff (tariff ratification #1565)
+ai-agent-simulator/src/model/storage-market.ts , ai-agent-simulator/julia/src/StorageMarket.jl · #2152
 Reorg-safe indexer serving (finalized prefix)
 PARTIAL
 IndexerReorgSafety.lean (policy fix pending)
@@ -5012,8 +5087,8 @@ Capacity-proportional miner self-stake (linear, no cap)
 LIVE (value provisional)
 miner-staking · D-0418
 Declarative spend-condition layer; N-party escrow; capabilities
-PLANNED
-D-0417 ( has-station Policy predicate LIVE; N-party/capabilities PLANNED)
+PARTIAL
+D-0417 ( has-station Policy predicate LIVE: Hash / Sig / Before / After / Point leaves under And / Or / Threshold(k) ; N-party/capabilities PLANNED)
 Agent session keys + caps + circuit breaker
 LIVE (breaker trip latch PARTIAL: rolled back with the rejected call, R6.2c)
 session_keys , agent_wallet
@@ -5042,13 +5117,13 @@ Performance-locked vesting R_p² + blackout
 LIVE (Root force_create_grant bypasses the §7 baseline)
 work-vesting
 Era-T conversion snapshot and per-cohort allocation (§8.2)
-PARTIAL (cohort pools enforced; the allocator still weights completed jobs and active days, which R8.4 excludes; score caps and aggregation open in E.38)
+PARTIAL (cohort pools enforced; completed-job and active-day weights removed, as R8.4 requires; score caps and aggregation open in E.38)
 ai-agent-simulator/src/model/testnet-conversion.ts ; docs/plans/ERA_T_TO_ERA_0.md · #1174, #257
 Genesis airdrop funding and grants (§8.2)
 PARTIAL (genesis bridge absent; existing grant calls mint)
 scripts/python/utils/genesis_allocator.py ; airdrop-vesting · #1175
 Airdrop claims, unlock schedule, and locked compute spend (§8.2 R8.7, R8.8)
-PARTIAL (claims use finality and locked compute spend is wired; the pallet still vests every tier linearly with the retired miner performance adjustment and update_miner_performance , and lets any tier spend locked principal; no genesis quarter, earn-to-unlock credit, or Validator freeze and daily release; no Agent spend credit or spend cap, and compute-channel refunds of locked-funded escrow return free balance instead of frozen principal. Miner self-stake over a still-frozen grant rides on overlapping AirdropVesting and MinerSelfStake freezes, but miner-slashing and validators lower only their own stake freeze before transferring proceeds, so a slash that reaches frozen grant principal fails today)
+PARTIAL (claims use finality and locked compute spend is wired; the pallet still vests every tier linearly with the retired miner performance adjustment and update_miner_performance , and lets any tier spend locked principal; no genesis quarter, earn-to-unlock credit, or Validator freeze and daily release; no Agent spend credit or spend cap, and compute-channel refunds re-freeze up to the locked principal a channel drew and revert the close if they cannot, without applying R8.8's payable-first draw. Miner self-stake over a still-frozen grant rides on overlapping AirdropVesting and MinerSelfStake freezes, but miner-slashing and validators lower only their own stake freeze before transferring proceeds, so a slash that reaches frozen grant principal fails today)
 airdrop-vesting ; agent-wallet ; compute-channel · #1175
 Ghost Tasks: encrypted issuance + known-answer correctness canary
 LIVE
@@ -5074,10 +5149,10 @@ LIVE local mechanics; all implemented pair directions target-only — conformanc
 has-station ; pair qualification #1498
 Finality-safe FLOP refund; permissioned FLOP relayer gate
 LIVE local mechanics; pair-level binding/finality PENDING E.48
-refund_final_safe ; RegisteredRelayers
-Agent-economics invariants (INV-02, fail_task , session nonce, payout atomicity)
-LIVE
-PR #50
+has-station::refund_htlc (finalized-prefix timeout gate; Lean refund_final_safe ); RegisteredRelayers
+Agent-economics invariants (INV-02, INV-S01 session nonce, INV-M06 payout atomicity)
+LIVE for INV-02, INV-S01 and INV-M06; fail_task removed with the per-task path
+agent_wallet SessionCapExceeded ; session_keys InvalidSessionNonce ; compute-channel payout_settlement
 INV-S03 pallet allowlist; INV-S05 immediate revocation
 LIVE: direct calls checked; known runtime dispatch wrappers rejected for every session; revocation immediate
 session_keys::execute_via_session rejects Utility , Proxy , Multisig , Sudo , Scheduler , EmergencyOverride , and the session-key pallet itself (runtime name FlopSessionKeys ); revoke_session sets active = false · #1949
@@ -5086,13 +5161,13 @@ LIVE arithmetic/authentication; execution guarantee GAP (E.43/E.44)
 GnSink::validate_session_gn ; verified_work_from_turns · #455
 Current-profile channel payment without public work credit (R11.2b)
 LIVE payment-only; future audited credit and historical recovery OPEN (E.44)
-payout_settlement ; payout_forward_settlement ; resolve_unrecoverable_transcript_inner ; runtime cooperative_work_credit tests · task 1494 (decision ID pending)
-Sessions: cooperative path has 2 primary inclusions; variable turn/path/evidence cost; reserved capacity
-LIVE mechanics; capacity mechanism PENDING; serialized bytes PARTIAL; withdrawal PROPOSED (ratification pending); benchmark/network GAP (E.44/E.46)
-pallet_compute_channel · D-0403/D-0502/#1496
+payout_settlement ; payout_forward_settlement ; resolve_unrecoverable_transcript_inner ; runtime cooperative_work_credit tests · #2375 (decision ID pending)
+Sessions: cooperative path has 2 primary inclusions; variable turn/path/evidence cost; reserved capacity; 85/15 fee split
+LIVE mechanics; 85/15 fee split RATIFIED (D-0525, #2702); capacity mechanism PENDING; serialized bytes PARTIAL; withdrawal PROPOSED (ratification pending); benchmark/network GAP (E.44/E.46)
+pallet_compute_channel · D-0403/D-0502/D-0525/#1496/#2702
 Terminal DA-loss settlement (R13.0c / V4)
-GAP: receipt payout in code conflicts with D-0430 full-refund rule; legacy missing-tariff fallback remains
-compute-channel::resolve_unrecoverable_transcript_inner · #1948/#1946
+GAP: receipt payout in code conflicts with D-0430 full-refund rule; a missing tariff now rejects ( SettlementTariffMissing ) except for a pre-v2 legacy channel, which the migration flag converts once
+compute-channel::resolve_unrecoverable_transcript_inner , settlement_tariff_pay · #1948
 Failed/early-close three-way split ( φ )
 LIVE
 D-0422/#598
@@ -5100,8 +5175,8 @@ Dispute standing (agent + validators)
 LIVE
 ValidatorSet::is_active_validator · #591
 Recursive dispute bisection beyond single turn
-PARTIAL
-off-chain receipt/SDK landed (PR #48)
+LIVE: on-chain midpoint rounds over complete power-of-two settled bundles; other bundles use single-turn open_dispute
+compute-channel open_bisection_dispute , respond_bisection , challenge_bisection (G.1)
 Market-actor collusion detector + mechanism perturbation (R12.3)
 PARTIAL: off-chain detector and dry-run perturbation canary LIVE; mechanism action open
 indexer/src/metrics.ts , indexer/src/survival.ts · #1947
@@ -5127,8 +5202,11 @@ V6 censorship (FOCIL); V8 ghost-task accountability; O3 attestation reputation; 
 PLANNED
 pallet-account-recovery built; wiring pending (#447 etc.)
 Committee-sampling composition machine-check; PQ crypto
-PLANNED/OOS
-E — §2.3; §12.4 (quantum out of scope)
+PARTIAL/OOS: committee gate predicate proved, including the bootstrap fallback; seat-capture composition PLANNED (E.42); quantum out of scope
+lean-proofs/veil/FlopVeil/Consensus.lean ( committee_poui_gated ); E.42 — §2.3; §12.4
+Session capacity units (R11.2)
+PARTIAL: source landed (elapsed-time bound; pre-open finality lag excluded); runtime qualification and deployment pending; the value-audit planner is SDK-only, with no production caller yet
+pallet_flop_poui::validate_session_gn_for_class : aggregate_gn * 1000 <= rate * session_ms for each accepted G_n/s rate; caller elapsed blocks are floored at one then capped at sla.max_duration , independently of the SLA turn bound; design and blockers · #2240 (audit runner); direct-proof units #1597 remain open
 Regenerating the evidence-coverage matrix. The per-section research/Lean/Quint/Julia backing is
 generated separately into yellowpaper-coverage.md via
 just yellowpaper-regen .
