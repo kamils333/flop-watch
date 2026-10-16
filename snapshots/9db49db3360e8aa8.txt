@@ -1711,12 +1711,16 @@ pallet_airdrop_vesting grant; creating the grant MUST NOT mint the same allocati
 grant tier MUST be Miner, Validator, or Agent, matching the account's allocation cohort.
 R8.7 — Unlock schedule. A Miner grant MUST unlock ⌊P/4⌋ of its principal P at its start
 block. The rest MUST unlock only against unlock credit: one FLOP of principal for each FLOP the
-grantee account receives as the channel's miner in the payout of a compute-channel session settled
-by settle (R12.1a), by certificate-backed settlement of a CertificatePremium channel
-( certificate_settle ), or by force_settle → finalize (R12.1d). A payout MUST count only once its
-settlement block is finalized and
+grantee account receives from either of two sources. The first is its payout as the channel's miner
+of a compute-channel session settled by settle (R12.1a), by certificate-backed settlement of a
+CertificatePremium channel ( certificate_settle ), or by force_settle → finalize (R12.1d). A
+payout MUST count only once its settlement block is finalized and
 channel_dispute_window_blocks have passed since it with no
-upheld fraud dispute against the session. Block rewards, forward-availability payments, refunds,
+upheld fraud dispute against the session. The second is its share of the miner leg of the block
+reward ( miner_share_ppt , §9) as actually minted to the grantee account in
+a block-reward distribution. Such a share MUST count once the distribution block is finalized.
+Each receipt MUST count once. The validator, agent, and staker legs of the block reward, the
+Labs/Foundation subsidy, transaction fees and tips, forward-availability payments, refunds,
 penalties, and dispute bonds MUST NOT accrue credit. A Miner grant's unlocked amount is
 min(P − S, ⌊P/4⌋ + credit) , where P is the grant's principal at creation, which never changes,
 and S is the total principal later slashed from it (R8.8); the grant has no end block, and
@@ -1782,7 +1786,8 @@ allocation), D-0438 and D-0440 (current cohort pools), D-0514 (conversion supply
 scoring inputs, snapshot, and the fail-closed miner adjustment), D-0517 (the Miner quarter at genesis
 and earn-to-unlock credit, the Validator freeze to the first halving and daily release, and immobile
 locked Miner and Validator principal; it supersedes D-0514's miner adjustment and narrows D-0515's
-locked spend to Agent grants), D-0515 (grant landing, claims, and
+locked spend to Agent grants), D-0527 (Miner unlock credit for the grantee's minted miner-leg block
+rewards alongside its settled payouts; supersedes D-0517 item 1), D-0515 (grant landing, claims, and
 locked compute spend), D-0522 (Agent spend-to-unlock: one FLOP per three of locked principal in a settled
 payable , the three-quarter spend cap, and locked-first payout and refund attribution). Formal, for R8.1's work-vesting grant only:
 FlopSpecs/Vesting.lean ( unlock_le_ratio , whose

@@ -183,9 +183,9 @@ FLOP. Competition changes the fraction of miner emissions credited to your fleet
 the other worsens, so a usable onboarding estimate must stress both.
 What reduces returns
 Supply dilution: circulating supply grows from 0.46B at TGE — emission, the reserve release,
-agent spending and the miner airdrop unlock — to about 8.8B at the day-730 boundary in the base case,
-and up to 9.6B if served inference unlocks the whole miner airdrop. At a constant network value, the
-implied token price falls about 95%.
+agent spending and the miner airdrop unlock — to about 9.6B at the day-730 boundary in the base case,
+where the airdropped miners' earnings have unlocked the whole miner airdrop by month 8. At a constant
+network value, the implied token price falls about 95%.
 Share dilution: as verified network compute grows, a fixed operator's G n share falls.
 Supply basis
 Total supply follows the tokenomics workbook (rev 2026-09-10, §4): the full 4.4B pool minted at
@@ -198,17 +198,18 @@ whole 1.2B agent pool (spendable only on inference; every 3 FLOP spent unlocks 1
 agents buy compute: the calculator follows the workbook's base-case total drain, 40M/month through month 12,
 then 30M/month, of which three quarters is spent on compute and one quarter unlocks — a projection, since
 the protocol sets no pace), the 1.2B validator bond (frozen until the first halving), the 0.64B of reserve not yet
-distributed (80M per half-year season), and 0.90B of the miner airdrop. The miner airdrop unlocks only
-against inference served : one FLOP for every FLOP the airdropped miners earn from settled sessions,
-counted once the 7-day dispute window has passed; block rewards do not count (D-0517). The calculator
-treats the airdropped miners as the testnet cohort, keeping its 1,000 H100-equivalents and serving at the
-network's utilization, so their share of network inference is 1,000 ÷ network units. The unlock follows
-the demand inputs above, not the session-income toggle. In the base case about 150M of the 900M unlocks by
-the day-730 boundary. Dividing a market cap by total supply would give a fully diluted price, which is not
+distributed (80M per half-year season), and 0.90B of the miner airdrop. The miner airdrop unlocks
+against what the airdropped miners earn : one FLOP for every FLOP of block rewards they receive from
+the miner pool (D-0527) and of their payout from settled sessions, counted once the 7-day dispute window
+has passed (D-0517). The calculator treats the airdropped miners as the testnet cohort, keeping its 1,000
+H100-equivalents and serving at the network's utilization, so their share of the miner pool and of network
+inference is 1,000 ÷ network units. The payout leg follows the demand inputs above, not the
+session-income toggle; the block-reward leg needs no demand. In the base case the whole 900M has unlocked
+by month 8 (day 240). Dividing a market cap by total supply would give a fully diluted price, which is not
 what the input above asks for; the workbook divides by its circulating column for the same reason. The
 workbook instead vests the miner airdrop over four months by time, so its circulating column
-(5,532,032,000 at month 12, 9,584,064,000 at the day-730 boundary) is what this calculator reaches only
-once the whole miner airdrop has unlocked. It adds no compute-based genesis award to miner revenue, and any
+(5,532,032,000 at month 12, 9,584,064,000 at the day-730 boundary) is what this calculator reaches once
+the whole miner airdrop has unlocked, which the base case does by month 8. It adds no compute-based genesis award to miner revenue, and any
 personal token allocation sits outside this cash-flow model.
 This agrees with protocol params. D-0440 ratified
 genesis_supply = 4,400,000,000 (the workbook's 2026-08-27 restatement, which raised the
@@ -229,8 +230,8 @@ Era-0 emission (96 reward + 16 subsidy) × 86,400 × 30 = 290,304,000 FLOP/month
 First halving 63,072,000 blocks, approximately day 730
 Owned-device cost basis 90 pre-mainnet testnet days + 730 Era-0 days = 820 days; no residual value
 Share proxy H100-equivalent share approximates G n only under equal verified utilization and quality
-Miner airdrop unlock 900,000,000 locked at TGE; unlocks 1 FLOP per FLOP of inference served by the testnet cohort (1,000 H100-eq, share 1,000 ÷ network units), counted 7 days after settlement; block rewards excluded (D-0517)
-Price and liquidity Network value is user-supplied; the agent and reserve release paths are modeled linearly and the miner airdrop unlocks with served inference; sell pressure, slippage, and lockup nuances are omitted
+Miner airdrop unlock 900,000,000 locked at TGE; unlocks 1 FLOP per FLOP the testnet cohort earns (1,000 H100-eq, share 1,000 ÷ network units): its miner-pool block rewards on payment (D-0527) and its inference payout 7 days after settlement (D-0517)
+Price and liquidity Network value is user-supplied; the agent and reserve release paths are modeled linearly and the miner airdrop unlocks with the cohort's earnings; sell pressure, slippage, and lockup nuances are omitted
 Reading the result
 The on-page calculation trace generates the summary in eight auditable steps: divide your proxy compute by total
 network compute; divide network value by month-end circulating supply; value your share of period miner emissions;

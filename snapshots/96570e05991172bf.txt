@@ -279,8 +279,8 @@ validators produce blocks and check work certificates, and agents buy compute. P
 what earns the genesis airdrop; the allocations are set out in section 03.
 Miners — connect GPUs and serve inference requests. Their airdrop is awarded in proportion
 to the verified compute they serve over the testnet. A quarter is liquid at genesis; the rest
-unlocks one airdropped $FLOP for every $FLOP the miner earns serving inference on mainnet, with
-no time limit. Block rewards do not count. Until it unlocks, the locked balance can be posted as
+unlocks one airdropped $FLOP for every $FLOP the miner earns on mainnet, block rewards and
+inference fees alike, with no time limit. Until it unlocks, the locked balance can be posted as
 the miner's stake but cannot otherwise be moved.
 Validators — run nodes, verify work certificates, and produce blocks. The top 1,000 on a
 combination of uptime, block production, accuracy, and latency are selected for the mainnet
