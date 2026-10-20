@@ -589,10 +589,13 @@ independent sub-proofs, each in its own trust domain:
 Committee Sybil cost. A committee identity costs validator stake only, with no hardware,
 calibration, or Ghost-Task term: eligibility is stake at or above effective_minimum_stake() (whose
 baseline is validator_min_stake ) plus a recent accepted verification
-duty (R15.4c), and the duty is an eligibility condition, not a cost. Delegated and sponsored stake
-may count toward that floor, but only self-stake counts as an identity's Sybil capital: delegated
-and sponsored backing need be neither the operator's own nor distinct across identities. The cost of
-k identities is therefore the sum of their self-stakes, not k · effective_minimum_stake() . E.42
+duty (R15.4c), and the duty is an eligibility condition, not a cost. Validator and miner stakes are
+self-stake only (third-party delegated staking is prohibited). Sponsored stake (E.32) may count
+toward that floor, but only self-stake counts as an identity's Sybil capital: sponsored backing need
+be neither the operator's own nor distinct across identities. The cost of k identities is
+therefore the sum of their self-stakes, not k · effective_minimum_stake() . Where a sponsor-posted
+bond counts as self-stake (R6.1a), the cost of sponsored identities is the sponsor's capital and
+rests on the sponsor's admission of operators. E.42
 must bound that self-stake and bridge it and the implemented sampling to the honest-seat premise of
 (2); a mode that seats identities without a recent duty is an E.42 exception. MaxSlotsPerEntity is
 self-declared and is not a Sybil cost. Appendix H records where the deployed runtime departs from
@@ -1424,11 +1427,11 @@ pallet_multisig ; ≤100 signatories
 Proxy / authority delegation
 pallet_proxy ; Any / NonTransfer / Governance / Staking types
 Validator staking & authority set
-pallet_validators — the single source of truth and the SessionManager /authority source. Min stake validator_min_stake (compounds validator_growth_numerator / validator_growth_denominator = +9 %/yr) with a value-coupled floor max(baseline, k·V_booked) ; native delegation; stake-ordered rotation with a min-performance gate. There is no pallet_staking .
+pallet_validators — the single source of truth and the SessionManager /authority source. Min stake validator_min_stake (compounds validator_growth_numerator / validator_growth_denominator = +9 %/yr) with a value-coupled floor max(baseline, k·V_booked) ; self-stake only (no delegated staking); stake-ordered rotation with a min-performance gate. There is no pallet_staking .
 Miner staking
-pallet_miner_staking ; miner_unbonding_blocks unbond, min_miner_self_stake min self-stake, 0– miner_commission_cap_percent commission
-Stake delegation
-validators: native pallet_validators delegation (cap vs self-stake, commission, pro-rata); miners: miner-staking + delegation-cap (≤10× self-stake)
+pallet_miner_staking ; miner_unbonding_blocks unbond, min_miner_self_stake min self-stake; self-stake only (legacy commission miner_commission_cap_percent and max_delegators_per_miner deprecated)
+Operator self-stake & community staking pool
+operators (validators and miners): self-stake only, with no third-party stake delegation or commission cuts ( miner_staking::delegate , validators::delegate , and delegation-cap deprecated); non-operating holders: duration-locked community staking pool sharing the staker_share_ppt = 5% block-reward allocation across 7 lock duration tiers without slashing risk (§9.1 R9.12, E.40 )
 Timelock / vesting
 pallet_vesting , work-vesting ( R_p² ), airdrop-vesting ; HTLC escrow (§10)
 Declarative spend-condition layer
@@ -1441,6 +1444,35 @@ miner_capacity_stake_per_gflop = 0.01 FLOP/(G_n/s). The
 coefficient guards emission-inflation fraud: the realized extra reward over the dispute window W for a
 miner claiming X·B_p is r·(X−1)·B_p·W (linear in B_p ), so a constant k tracks the security floor
 k_min(EV) = ((1−p)/p)·(X−1)·P·W / B_total . The onboarding form of this bound is Appendix C.1.
+R6.1a — Sponsored registration bonds. A sponsor MAY post the whole registration bond of a miner
+or validator and later top it up (Appendix G.3). The sponsored principal MUST stay owned by, and
+frozen in, the sponsor account: the operator MUST NOT be able to transfer it, pay fees with it, place
+it on hold or escrow, or back other stake with it. It MUST stay slashable while active or unbonding
+and MUST be refunded only to the sponsor, after the role's unbonding window has elapsed on the
+finalized prefix. Active sponsored principal MUST count toward the miner self-stake requirement above
+and toward the validator effective minimum (§15.2) only on runtimes built with
+sponsored_self_stake_enabled ; on every other runtime it is
+backing only, and sponsored registration and top-up MUST be rejected. The slash-proceeds account
+MUST NOT post principal that counts as self-stake, since its slashes would pay it back; while it
+still holds a live sponsor position from before the rule, the runtime MUST NOT credit any sponsored principal. Because freezes overlap rather than add, on enabled runtimes sponsor principal MUST be the
+sponsor account's only staking freeze: an account holding own stake, a delegation or any staking freeze
+in the other staking pallet MUST NOT open or grow a sponsor position, and a sponsor account MUST
+NOT add own stake or a delegation in either staking pallet. When a running chain first enables the
+rule, every live position whose sponsor already holds another staking freeze MUST be quarantined,
+and no sponsored principal credited until that scan, which runs in bounded per-block batches,
+completes, nor while any quarantined position remains live. On enabled runtimes a
+registration, own or sponsored, MUST be rejected while sponsor positions from an earlier
+registration of the account are live, so a slash of the new registration never reaches sponsors of the
+old one; the operator MAY withdraw such a position after its finalized unlock, and MAY start
+the full unbond of one that outlived its registration. On enabled runtimes a jailed validator MUST
+NOT return to the active set below the effective minimum: un_jail , like rejoin , first restores
+its bonded self-stake from its own spare balance. On enabled
+runtimes a sponsor unbond that takes an
+active validator below the effective minimum MUST return it to the queue, and MUST be rejected where
+that would cross the minimum active set. On enabled runtimes an
+operator's deregistration MUST start the unbonding of its active sponsor positions. The validator
+self-stake ratio for native delegation MUST count operator-owned stake only. Chain state and events
+MUST report own and sponsored stake separately; a sponsored bond creates no allocation right (R8.4).
 6.2 Agent autonomy — operating without per-action consensus
 pallet_session_keys + pallet_agent_wallet let an owner pre-authorize a delegate agent with a
 lifetime cap, per-tx and daily caps, a pallet/destination allowlist, and a circuit breaker
@@ -1552,7 +1584,8 @@ Provenance: D-0513 (SS58 prefix 42 on every network; networks told apart by gene
 D-0408 (single validator-staking system), D-0413 (value-coupled stake floor), D-0416
 (stake-ordered rotation), D-0417 (declarative spend-condition layer, UTXO not adopted), D-0418
 (capacity-proportional miner stake, provisional pending sim calibration), D-0403 (sessions as the
-escrow primitive's first instance). Grounding:
+escrow primitive's first instance), D-0530 (operator self-stake only; deprecation of delegation and
+commissions; 5% duration-locked community staking pool). Grounding:
 agent-composition-primitives.md,
 agent-token-lifecycle.md,
 model-selection-pricing-inference.md,
@@ -1716,7 +1749,9 @@ of a compute-channel session settled by settle (R12.1a), by certificate-backed s
 CertificatePremium channel ( certificate_settle ), or by force_settle → finalize (R12.1d). A
 payout MUST count only once its settlement block is finalized and
 channel_dispute_window_blocks have passed since it with no
-upheld fraud dispute against the session. The second is its share of the miner leg of the block
+upheld fraud dispute against the session (this payment-denominated airdrop unlock credit is governed
+by §8.2 and is distinct from public G_n work credit, reward accumulators, and work-vesting
+prohibited by §11.2 R11.2b). The second is its share of the miner leg of the block
 reward ( miner_share_ppt , §9) as actually minted to the grantee account in
 a block-reward distribution. Such a share MUST count once the distribution block is finalized.
 Each receipt MUST count once. The validator, agent, and staker legs of the block reward, the
@@ -1729,7 +1764,9 @@ A Validator grant MUST stay frozen until block
 halving_interval_blocks (63,072,000), the first block of halving
 era 1 (§9). From that block,
 Validator grants MUST be released one per 86,400 blocks (one day), each releasing its remaining
-principal in full on its release block, until every Validator grant is released; the window spans as
+principal P − S in full on its release block (where P is the grant's principal at creation and S is the
+total principal later slashed from it under R8.8; its unlocked amount is 0 before its release block and
+P − S from its release block onward), until every Validator grant is released; the window spans as
 many days as there are Validator grants. Until the release order is fixed
 ( E.38 ), Validator grants MUST NOT be released. Releasing
 a grant lifts only its vesting freeze: it MUST NOT unbond stake, and a validator in the active set
@@ -1758,7 +1795,9 @@ locked part. At close the escrow MUST be allocated once, in this order: the paya
 the locked part first; a refund then draws on what remains of the locked part first and returns
 that share to the grant as frozen principal, reducing its locked compute spend; every other leg
 draws on the remainder. Still-locked
-principal of a Miner grant MAY be bonded as that miner's own self-stake (§6.1); it stays frozen
+principal of a Miner grant MAY be bonded as that miner's own self-stake (§6.1), and still-locked
+principal of a Validator grant MAY be bonded as that validator's own self-stake (§15.2); in either
+case it stays frozen
 while bonded and after unbonding until it unlocks. Still-locked principal of a Miner or Validator
 grant MUST NOT otherwise be spent, transferred, or used for compute; slashing of bonded stake
 applies to it. Because stake and grant freezes overlap, a slash of a grantee's bonded stake MUST
@@ -1768,7 +1807,8 @@ and removed from the grant's freeze atomically with the slash, so the slash neve
 freeze.
 Data structures
 An airdrop grant records its tier, its principal at creation, start block, and claimed amount. A Miner
-grant also records its accrued unlock credit and the total principal slashed from it, an Agent grant
+or Validator grant also records the total principal S slashed from it (and a Miner grant records its
+accrued unlock credit), an Agent grant
 its locked compute spend and accrued spend credit, and a channel the locked part of its escrow. The
 conversion snapshot records the ratified Era-T height, account cohort and activity, fraud and cluster
 filters, allocation, and a binding hash.
@@ -1798,7 +1838,7 @@ Appendix H .
 Parameter
 Value
 Total genesis supply
-genesis_supply = 4,400,000,000 FLOP (no VC pre-mint, no auction) — three airdrops: genesis_miner_airdrop = 1,200,000,000 · genesis_validator_airdrop = 1,200,000,000 · genesis_agent_airdrop = 1,200,000,000; plus the genesis_reserve = 800,000,000 residual (ecosystem/incentives, not an airdrop)
+genesis_supply = 4,400,000,000 FLOP (no VC pre-mint, no auction) — three airdrops: genesis_miner_airdrop = 1,200,000,000 · genesis_validator_airdrop = 1,200,000,000 · genesis_agent_airdrop = 1,200,000,000; plus the genesis_reserve = 800,000,000 residual (ecosystem/incentives — funds the off-chain explorer referral leaderboard, periodic referral lotteries, builder programmes, and security-disclosure rewards; not an airdrop)
 Era 0 block reward
 initial_block_reward = 96 FLOP/block (fixed per-block param; halves per schedule; no cap)
 Split
@@ -1806,9 +1846,9 @@ miner_share_ppt = 75% miners · validator_share_ppt = 10% validators · agent_sh
 Validator share
 validator 10% pool, pro-rata by stake with finality_committee_premium_weight_ppm = 1.1× for current finality-committee members; liquid on issue (§9.1 R9.13)
 Agent & staker legs
-10% + 5% of each block reward minted to protocol-derived sovereign pool accounts; distribution policy unratified ( E.40 )
+10% agent leg + 5% duration-locked community staking pool (7 lock duration tiers, zero slashing risk; no operator delegation) minted to protocol-derived sovereign pool accounts; onward payout mechanics in E.40
 Labs/Foundation subsidy
-separate mint of subsidy_per_block_per_recipient = 8 + 8 FLOP/block ( flop-subsidy ), halving with the reward across all 5 subsidy eras ( subsidy_duration_blocks = 315,360,000, ~10 years); 1,955,232,000 FLOP total
+separate mint of subsidy_per_block_per_recipient = 8 + 8 FLOP/block ( flop-subsidy ), halving with the reward across all 5 subsidy eras ( subsidy_duration_blocks = 315,360,000, ~10 years); 1,955,231,984 FLOP total (blocks 1..=315,359,999 , block 0 unrewarded per R9.7)
 First halving
 block 63,072,000 (Day 730) → 48 FLOP/block
 Perpetual floor
@@ -1819,22 +1859,31 @@ params/flop-protocol-params.yaml ( initial_block_reward , mirrored to
 RewardInitialPerBlock ), not hardcoded or per-second. It follows the fixed halving schedule and is
 not subject to a governance emission ceiling above it — the genesis reward is the bound
 ( emission ≤ 96 ).
-R9.2 — Halving. Emission MUST halve geometrically, floored:
-96 → 48 → 24 → 12 → 6 → 3 after max_halvings = 5, then
-floor_reward = 3 FLOP/block forever. Block rewards are liquid on issue
+R9.2 — Halving. Emission MUST halve geometrically on block-indexed era boundaries
+era(b) = ⌊b / H⌋ ( H = halving_interval_blocks = 63,072,000),
+floored: 96 → 48 → 24 → 12 → 6 → 3 after max_halvings = 5, then
+floor_reward = 3 FLOP/block forever. A distribution period (last, now]
+straddling an era boundary MUST price each produced block b ∈ (last, now] at era(b) 's rate.
+Because genesis block 0 is unrewarded (R9.7), era 0 comprises H − 1 = 63,071,999 rewarded blocks
+( 1..=63,071,999 ) and each era e ≥ 1 comprises H = 63,072,000 rewarded blocks
+( e·H..=(e+1)·H − 1 ). Block rewards are liquid on issue
 (R9.13); airdrop grants unlock under §8.2 R8.7. Cumulative emission through the halving phase (end of
-era 5, ~year 12) is 11,920,608,000 FLOP; it reaches 2·R₀·H = 12,109,824,000 FLOP at the end of
-era 6 (~year 14) — not a hard cap ; the perpetual floor then adds
+era 5, block 378,431,999 , ~year 12) is R₀·H·63/32 − R₀ = 11,920,607,904 FLOP ( 2·R₀·H·63/64 = 11,920,608,000 in the H -blocks-per-era closed form before subtracting unrewarded block 0); it reaches
+2·R₀·H − R₀ = 12,109,823,904 FLOP ( 2·R₀·H = 12,109,824,000 before subtracting block 0) at the end of
+era 6 (block 441,503,999 , ~year 14) — not a hard cap ; the perpetual floor then adds
 floor_annual_emission = 94,608,000 FLOP/yr forever.
 R9.3 — Subsidy. The Labs/Foundation subsidy MUST be a separate mint ( flop-subsidy ), on top
 of — never part of — the block reward. Each of FLOP Labs and the FLOP Foundation MUST receive
 subsidy_per_block_per_recipient = 8 FLOP/block in halving
 era 0, and the rate MUST halve on the same 63,072,000-block boundaries as the block reward
-(8 → 4 → 2 → 1 → 0.5 per recipient) and be exactly 0 from era 5 — the subsidy TERMINATES on the
-same boundary where the reward FLOORS. Era 4's 0.5 FLOP is fractional in FLOP but exact in base
-units (5 × 10¹⁷), and the implementation MUST NOT truncate it. Duration is
-subsidy_duration_blocks = 315,360,000 blocks (5 eras, ~10 years);
-total minted = 63,072,000 × (16 + 8 + 4 + 2 + 1) = 1,955,232,000 FLOP.
+( era(b) = ⌊b / H⌋ : 8 → 4 → 2 → 1 → 0.5 per recipient) and be exactly 0 from era 5 — the subsidy TERMINATES on the
+same boundary where the reward FLOORS ( b = 315,360,000 ). Era 4's 0.5 FLOP is fractional in FLOP but exact in base
+units (5 × 10¹⁷), and the implementation MUST NOT truncate it. The exclusive sunset block is
+subsidy_duration_blocks = 315,360,000 ( 5·H , ~10 years); with
+genesis block 0 unrewarded (R9.7), the subsidy mints on 315,359,999 produced blocks ( 63,071,999 in
+era 0 and 63,072,000 in each of eras 1–4), so total minted =
+63,072,000 × (16 + 8 + 4 + 2 + 1) − 16 = 1,955,231,984 FLOP ( 1,955,232,000 in the H -blocks-per-era
+closed form before subtracting unrewarded block 0).
 R9.4 — Genesis. Genesis is work-first (no VC pre-mint, no auction, no team allocation).
 genesis_supply = 4,400,000,000 FLOP MUST be allocated to exactly four
 genesis buckets and nothing else: the three airdrops —
@@ -1842,7 +1891,7 @@ genesis_miner_airdrop ,
 genesis_validator_airdrop ,
 genesis_agent_airdrop (3,600,000,000 FLOP together, 1,200,000,000
 each) — plus the ecosystem reserve genesis_reserve = 800,000,000 FLOP,
-which is a genesis allocation but not an airdrop. The four MUST sum to genesis_supply
+which is a genesis allocation but not an airdrop (earmarked for off-chain explorer referral leaderboard payouts, periodic referral lotteries, builder programmes, and security-disclosure rewards, superseding on-chain referral commissions). The four MUST sum to genesis_supply
 exactly. The validator cohort is definitionally the aggregate bond —
 validator_min_stake ×
 validator_active_set_cap — so, when genesis parameters are
@@ -1856,20 +1905,21 @@ integer dust assigned deterministically so payouts sum exactly to the pool. This
 the four-way split: the agent and staker legs are carved out of the miner residual
 ( miner_share_ppt 900 → 750 ppt), never added on top, so
 validator_share_ppt stays at 100 ppt.
-R9.6 — Transaction-fee split. The tx-fee recipient split MUST be
-tx_fee_burn_percent_live = 10% burn ( BurnFees ), with the block
+R9.6 — Transaction-fee split. Protocol-wide fee routing MUST operate with zero burn:
+tx_fee_burn_percent_live = 0% burn ( BurnFees ), with the block
 author receiving tx_fee_author_share_percent_live = 100%
-of the unburned remainder (accounting as 800 ppt miner-proxy + 100 ppt validator share co-located on the
-author until per-miner G_n fee attribution splits the miner share). Tips are 100% to the author. The
-ratified target is 80% miners / 10% validators / 10% burn; the author-proxy accounting is the
-interim realization. Full taxonomy: Appendix D .
+of the transaction inclusion fee (base + encoded-length + adjusted-weight fee) and 100% of tips.
+Inference settlement fees likewise carry 0% burn (split 85% miner / 15% validator per §12.1 R12.1a).
+Full taxonomy: Appendix D .
 R9.12 — Agent & staker legs. The agent_share_ppt = 100 ppt and
 staker_share_ppt = 50 ppt legs MUST be minted every distribution
 period to two protocol-derived sovereign pool accounts ( PalletId , §9.3 R9.10 shape), one per leg.
-Onward distribution from either pool MUST NOT occur until its distribution policy is ratified
-( E.40 ); the pools accrue and the mint is evented. The two
-legs MUST be carved from the miner share, so the four legs sum to 1000 ppt with the validator
-pool unchanged (§9.1 R9.5).
+The staker_share_ppt = 50 ppt (5%) leg funds the duration-locked
+community staking pool across seven lock duration tiers with no slashing risk and no validator or
+miner intermediary. Onward distribution from either pool MUST NOT occur until its distribution
+policy is ratified ( E.40 ); the pools accrue and the mint is
+evented. The two legs MUST be carved from the miner share, so the four legs sum to 1000 ppt with
+the validator pool unchanged (§9.1 R9.5).
 R9.13 — Reward liquidity. The miner and validator legs of every block reward, and the
 Labs/Foundation subsidy, MUST be liquid on issue: the protocol MUST NOT auto-compound them
 into stake, force-stake, vest, or otherwise lock them. The agent leg accrues in its sovereign pool
@@ -1910,12 +1960,15 @@ unit 10⁻¹⁸ FLOP); the user-facing ticker via TOKEN_SYMBOL (a mainnet brandi
 SS58 prefix SS58Prefix = 42, the generic Substrate prefix, identical on every FLOP network (§6.5);
 1 s block time; existential deposit 0.01 FLOP.
 R9.9 — Initial authorities. The genesis chain spec MUST seed the initial validator set and its
-session keys (BABE + AlephBFT), bootstrapping the §2 finality committee. Post-genesis the set evolves
-only through §15 rotation; there is no other way to enter ActiveValidators .
+session keys (BABE + AlephBFT), bootstrapping the §2 finality committee. Post-genesis, ActiveValidators
+admits validators only through §15 rotation promotion from ValidatorQueue and through un_jail /
+rejoin restoration of jailed or extended-downtime-kicked validators within
+validator_active_set_cap (§15.5, §15.7).
 R9.10 — Protocol sovereign accounts. The FLOP Foundation and FLOP Labs accounts are
 protocol-derived ( PalletId sovereign accounts; mainnet SHOULD bind each to a multisig). They are
-the genesis-defined recipients/sinks for the Labs/Foundation subsidy (§9.1 R9.3), slash proceeds and the
-delegated-loss waterfall (§11.3), and the failed-session penalty φ (§12.1d) — never miner revenue.
+the genesis-defined recipients/sinks for the Labs/Foundation subsidy (§9.1 R9.3), 100% of slash
+proceeds across all fault paths (§11.3, zero burn), and the failed-session penalty φ (§12.1d) — never
+miner revenue.
 R9.11 — Bootstrap origin & de-sudo (one-way). At genesis, Root is held by pallet_sudo (§14.1,
 index 50) — a public dev key on devnet, a multisig on mainnet. Governance is not the sole Root
 authority until the de-sudo handoff neuters and removes pallet_sudo and routes RawOrigin::Root
@@ -1930,7 +1983,11 @@ the four cohorts re-cut; supersedes the D-0421/D-0435 pool sizes, leaves emissio
 floor, 5-era subsidy — supersedes D-0421's sixth-halving
 clause and amends D-0435's subsidy schedule), D-0435 (four-way split, halving subsidy), D-0421
 (work-first genesis),
-D-0408 (validator split), D-0410 (survival governor). Bootstrap-in-equilibrium (token seigniorage subsidizing useful inference below compute cost —
+D-0408 (validator split), D-0410 (survival governor), D-0529 (zero burn protocol-wide: 0% tx-fee
+burn, 0% inference-fee burn, 100% of slashes to FLOPFoundationAccount , superseding the interim 10%
+burn and 80/10/10 target), D-0530 (operator self-stake only; 5% duration-locked community staking pool
+across 7 tiers), D-0531 (off-chain explorer referral leaderboard and periodic referral lotteries
+funded from genesis_reserve , superseding the workbook's 6–10% on-chain referral commissions). Bootstrap-in-equilibrium (token seigniorage subsidizing useful inference below compute cost —
 the Duplexia regime): Pass et al., Economics of PoUW , arXiv:2606.06700, with FLOP's duplex overhead
 δ ≈ low single-digit % (below Pearl's cuPOW ~10% reference, arXiv:2606.04819) machine-checked as
 Duplexia.subsidy_below_cost . Grounding:
@@ -2069,7 +2126,11 @@ exhaust an independently committed transcript (E.43/E.44).
 R11.2b. Current-profile channel payout MUST NOT issue public work credit, increase reward
 accumulators or performance-vesting work, refresh committee recency, or update calibration from a
 receipt. This applies to cooperative, certificate, unilateral, forward, and unrecoverable-DA payout.
-Challenge expiry alone MUST NOT make a receipt eligible. Future independently audited credit
+Challenge expiry alone MUST NOT make a receipt eligible for public work credit. (Private,
+payment-denominated Miner unlock credit and Agent spend credit on Era-0 airdrop grants under §8.2 R8.7
+are not public work credit, block-reward accumulation, or work-vesting ( R_p² ), and accrue after
+finality plus channel_dispute_window_blocks as governed by
+R8.7.) Future independently audited public work credit
 and recovery of historical credit require the separate evidence and protocol disposition in E.44.
 11.3 Validator slashing table
 pallet_validators is the single authority for validator penalties.
@@ -2078,19 +2139,19 @@ Penalty
 Effect
 Re-entry
 Collusion (signing a fake G_n proof)
-slash_fraud_percent = 100% burn
+slash_fraud_percent = 100% slash (to Foundation)
 eject + blacklist
 none
 Equivocation (conflicting blocks)
-correlated (Eth2-style): lone slash_equivocation_lone_percent = 50% (other 50% returned after 180 d), ≥⅓ correlated → 100% burn
+correlated (Eth2-style): lone slash_equivocation_lone_percent = 50% slash (other 50% returned after 180 d), ≥⅓ correlated → 100% slash (to Foundation)
 lone: eject (re-stakeable); cartel: eject + blacklist
 lone: re-stake after the 180 d return + unlock cooldown; cartel: none
 Evidence forgery
-100% burn
+100% slash (to Foundation)
 eject + blacklist
 none
 TEE-attestation failure (HARD-tier attestations only)
-100% burn
+100% slash (to Foundation)
 eject + blacklist
 none
 Liveness — downtime > 300 blocks
@@ -2102,13 +2163,16 @@ validator_extended_downtime_slash_percent = 5%
 kicked
 rejoin with full stake top-up
 Collusion/forgery/TEE stay flat 100% (evidence-backed fraud). Equivocation is the only correlated,
-recoverable class (a lone double-sign is most often an honest failover bug). On every slash path the loss
-order (delegated-loss waterfall) MUST be: operator self-stake first, then native delegators pro-rata,
-then sponsors at the fault rate.
+recoverable class (a lone double-sign is most often an honest failover bug). All slashed collateral routes
+100% to FLOPFoundationAccount with zero burn (§9.3 R9.10). Operator stake is self-stake only (third-party
+delegated staking is prohibited); where legacy or testnet sponsored backing (E.32) is present, the loss
+order charges operator self-stake first and sponsors thereafter at the fault rate (legacy delegator
+waterfall entries are deprecated).
 Rationale & sources (non-normative)
 Provenance: task 1494 (confirmed payment-only scope; decision ID pending),
 D-0409 (slashing-table reconciliation), D-0420 (correlated equivocation), D-0419
-(unbonding slash-lock). The P0 agent-economics sweep (INV-02, fail_task , session nonce, payout
+(unbonding slash-lock), D-0529 (zero burn; 100% of slashes to FLOPFoundationAccount ),
+D-0530 (operator self-stake only; delegation waterfall deprecated). The P0 agent-economics sweep (INV-02, fail_task , session nonce, payout
 atomicity) closed the four flagged-not-enforced invariants. Grounding:
 formal-specs-agent-economics.md ,
 session-work-verification-gap.md,
@@ -2428,7 +2492,7 @@ agent made whole from escrow
 V5
 Collusion (co-signing fake proof)
 Tier-3 independent re-execution
-100% burn + eject + blacklist
+100% slash (to Foundation) + eject + blacklist
 dispute wins on transcript evidence
 V6
 Transaction censorship
@@ -2457,7 +2521,7 @@ possession-binding makes pure rubber-stamping fail
 late discovery = V4
 V11
 Stake-exit timing
-unbond completion blocked while a session/dispute/audit is open (D-0419); 21 d cooldown vs retention W (14 d) and the dispute lifecycle (7 d + 2 h + one 2 h extension)
+unbond completion blocked while a session/dispute/audit is open (D-0419); 21 d cooldown vs retention W (14 d) and the R1.2a worst-case dispute lifetime ( D + (2·⌈log₂ n_max⌉ + 2)·R = 763,200 blocks = 8 d 20 h at n_max = 1,024 , R = 2 h ; sequential W + 8 d 20 h = 22 d 20 h exceeds 21 d by 1 d 20 h, whereas starting inside W under the §1.2 coupling 763,200 ≤ W finishes within 14 d)
 margin composition and validator-side freeze are E.57; slash-lock covers the miner side (M11)
 n/a
 V12
@@ -2650,21 +2714,26 @@ ActiveValidators — promotion happens only through rotation (§15.5).
 Requirement
 Rule
 Self-stake
-≥ effective_minimum_stake() = max( validator_min_stake , ValueCoupledStakeFloor) ; baseline validator_min_stake , compounding +9%/yr
+≥ effective_minimum_stake() = max(MinimumValidatorStake, ValueCoupledStakeFloor) ; baseline MinimumValidatorStake starts at validator_min_stake = 1,200,000 FLOP and compounds annually in on_initialize(n) at every n > 0 with n mod 31,536,000 = 0 ( 365 × 86,400 blocks) via integer floor division ⌊old × 109 / 100⌋ ( validator_growth_numerator / validator_growth_denominator = +9%/yr), capped at 1% of current total_issuance ( min(⌊old × 109 / 100⌋, ⌊0.01 × total_issuance⌋) ); force_set_minimum_stake and set_value_coupled_floor enforce the same 1%-of- total_issuance ceiling
 Self-stake ratio
-self-stake MUST be ≥ 20% of (self + delegated) ( MinSelfStakeRatio )
+operator stake is self-stake only (third-party delegation prohibited; legacy MinSelfStakeRatio ≥ 20% applies only if E.32 sponsored backing is enabled)
 Slots per entity
 ≤ 5 ( MaxSlotsPerEntity )
 Not blacklisted
 fraud-blacklisted accounts MUST NOT re-register
 Verification liveness (committee)
 last accepted verification duty (R15.4c; LastVerifiedWork ) within WorkRecencyWindow = 86,400 blk (24 h); else active but out of the PoUI committee
-Delegation (min 100 FLOP, ≤ max_delegators_per_miner -class bound)
-and commission follow §6.1.
-With a 20% self-stake ratio, new native delegation and sponsored backing together are admitted only
-up to four times recorded self-stake. Since registration bonds exactly the effective minimum,
-surplus free balance does not increase this capacity. The admission check does not preserve that
-ratio after a slash reduces self-stake (Appendix H).
+Validator and miner stakes are self-stake only (§6.1); third-party delegation (legacy
+max_delegators_per_miner -class bounds and operator commission) is
+deprecated.
+Where legacy or testnet sponsored backing (E.32) is enabled in the runtime, MinSelfStakeRatio (20%)
+bounds admitted backing to four times recorded self-stake. Since registration bonds exactly the
+effective minimum, surplus free balance does not increase this capacity, and the admission check does
+not preserve that ratio after a slash reduces self-stake (Appendix H).
+Where sponsored_self_stake_enabled holds, active sponsored
+principal also counts toward the self-stake floor at queue promotion and rejoin (R6.1a), and a sponsor
+can register a validator that holds no balance. Native delegation still counts only operator-owned
+stake, so a fully sponsored validator accepts none.
 15.3 Duties & resource intensity
 Duty
 Cost
@@ -2743,18 +2812,31 @@ the 900-block committee session to the BABE epoch.
 Rotation runs in on_initialize every
 validator_rotation_interval_blocks (~30 d) plus manual
 rotate .
-R15.5. Rotation MUST eject the bottom validators_to_eject = 50
-and promote the top validators_to_promote = 50 from ValidatorQueue
-whose recorded self-stake ≥ effective_minimum_stake() ; ejected validators serve
-ejection_cooldown_blocks (~7 d) then rejoin with stake topped to
-the current minimum. Ranking MUST be by stake subject to a minimum-performance floor
-(verification liveness per R15.4c + uptime), so padding the liveness signal does not improve rank
-(only clearing the floor remains gameable).
+R15.5. Rotation MUST eject up to validators_to_eject = 50 from
+the bottom of the active set — bounded by
+validator_rotation_churn_percent = 10% (rounded up) and
+truncated to preserve at least
+validator_min_active_validators = 4 active seats ( deregister ,
+jail , and kick MUST likewise reject removal at or below the floor, and a proven-fault slash at the
+floor MUST confiscate stake (transferred to the Foundation per R9.10) and blacklist immediately while deferring seat removal until rotation can
+replace or shrink the set; see E.56) — and promote up to
+validators_to_promote = 50 from ValidatorQueue whose recorded
+self-stake ≥ effective_minimum_stake() . Rotation ejection removes the validator from ActiveValidators
+and thaws its self-stake freeze (the principal remains in the operator's account); re-entry goes through
+register into ValidatorQueue after ejection_cooldown_blocks
+(~7 d; configured in Config , enforcement in register pending), whereas un_jail (after
+MinJailBlocks = 3,600 for liveness jail) and rejoin (for
+extended-downtime kicks, topping up self-stake from free balance to effective_minimum_stake() ) restore
+a jailed or kicked validator directly to ActiveValidators while a slot below
+validator_active_set_cap is free. Ranking MUST be by stake
+subject to a minimum-performance floor (verification liveness per R15.4c + uptime), so padding the
+liveness signal does not improve rank (only clearing the floor remains gameable).
 R15.5b. The active set MUST NOT exceed
 validator_active_set_cap = 1,000 . register admits to
-ValidatorQueue , never directly to the active set; rotation MUST promote from the queue only
-while a slot is free, so the cap bounds ActiveValidators and never registration. Queued validators
-hold stake and may do useful work; they are not finality-eligible until promoted.
+ValidatorQueue , never directly to the active set; rotation promotion from ValidatorQueue and direct
+restoration via un_jail or rejoin MUST admit to ActiveValidators only while a slot is free, so
+the cap bounds ActiveValidators and never registration. Queued validators hold stake and may do useful
+work; they are not finality-eligible until promoted.
 The current implementation attempts promotion in LIFO order within the requested budget and free
 slots; stake-ordered selection remains #1713. Underfunded candidates remain queued with their bond
 and backing intact. Promotion preserves stake and commission fields and resets performance and the
@@ -2762,13 +2844,19 @@ joining epoch.
 A queued candidate has no in-place self-stake top-up: transferring more funds does not update its
 recorded bond, and rejoin applies only to extended-downtime kicks. A raised effective floor,
 including an annual baseline increase, can therefore defer promotion until the floor falls back or
-the operator replaces the registration. Operators coordinating replacement first arrange native
-delegation and sponsor unbonding, then deregister and register at the new minimum; deregistration
-does not enforce this backing-removal procedure. Appendix H records the missing top-up path.
+the operator replaces the registration. Operators coordinating replacement first arrange any sponsor
+unbonding (native delegation is deprecated), then deregister and register at the new minimum;
+deregistration does not enforce this backing-removal procedure. Appendix H records the missing
+top-up path.
 Set size. The active set is capped at 1,000 ; the finalizing committee is 100 (§15.4),
-sampled from the active set, so the two are separate bounds. Effective set size below the cap is
-governed by rotation throughput and the stake gate. Behaviour on an active set at or below the eject
-count is E.56.
+sampled from the active set, so the two are separate bounds. Under D-0526 (resolving E.41 via Option (a)),
+every active validator (up to 1,000) is a BABE block authoring authority ( MAX_ACTIVE_VALIDATORS =
+MaxAuthorities = 1,000), while AlephBFT finality evaluates strictly across the 100-member PoUI committee.
+Effective set size below the cap is governed by rotation throughput, the stake gate, and the runtime
+minimum-set and churn guards ( validator_min_active_validators =
+4, validator_rotation_churn_percent = 10%,
+validator_min_scored_samples = 3). How that runtime floor relates
+to the launch cohort, committee-safety premise, and skip-vs-truncate policy is E.56.
 Composition of the first active set at mainnet genesis (post-testnet ranking by verification liveness,
 placement declaration, 10 % per-domain cap) and the move from fixed bottom-50 ejection to a
 performance floor are proposals pending ratification:
@@ -2796,10 +2884,11 @@ Only (a) is a validator duty; any re-execution behind either is the checker lane
 model selection is agent-driven ( open_channel names the miner and pins model_hash ); there is
 no on-chain scheduler.
 15.7 Slashing & recovery
-pallet_validators is the single penalty authority (§11.3 table). Fraud (Collusion / EvidenceForgery /
-TeeAttestationFailure) = 100% burn + eject + blacklist. Equivocation follows the correlated curve: a
-lone offence burns 50%, returns the other 50% after 180 d, ejects the validator, and remains
-re-stakeable; ≥⅓ correlated equivocation burns 100%, ejects, and blacklists. Liveness = 1% + jail;
+pallet_validators is the single penalty authority (§11.3 table); all slashed collateral is transferred
+100% to FLOPFoundationAccount with zero burn (§9.3 R9.10). Fraud (Collusion / EvidenceForgery /
+TeeAttestationFailure) = 100% slash + eject + blacklist. Equivocation follows the correlated curve: a
+lone offence slashes 50%, returns the other 50% after 180 d, ejects the validator, and remains
+re-stakeable; ≥⅓ correlated equivocation slashes 100%, ejects, and blacklists. Liveness = 1% + jail;
 extended downtime = 5% + kick.
 validator_unbonding_blocks = 21 d with a slash-lock while a
 session/dispute/audit is open (D-0419); the cooldown exceeds the 14 d DA retention W , and its
@@ -2808,7 +2897,8 @@ Rationale & sources (non-normative)
 Provenance: D-0408 (single validator-staking system), D-0413 (value-coupled floor), D-0416
 (stake-ordered rotation), D-0437 (active-set cap), D-0409 (flat fraud classes), D-0419
 (unbonding slash-lock), D-0420 (correlated equivocation), D-0501 (seat premise and cooperative-credit
-scope), D-0439 (verification liveness; CPU-class validator). Grounding:
+scope), D-0439 (verification liveness; CPU-class validator), D-0529 (zero-burn slash routing to
+FLOPFoundationAccount ), D-0530 (operator self-stake only). Grounding:
 validator-miner-hardware-costs.md (§2.1 reference profile
 and comparables), validator-set-diversity.md (seat-counted
 placement bounds), miner-validator-economics.md,
@@ -2913,7 +3003,7 @@ staker_share_ppt
 50 parts-per-thousand
 §9
 D-0435
-Community-staker share of each block reward (5%; yellowpaper §9) — all FLOP stakers other than miners and validators.
+Community-staker share of each block reward (5%; yellowpaper §9) — duration-locked community staking pool across seven lock duration tiers with zero slashing risk and no operator delegation (D-0530), for all FLOP stakers other than miners and validators.
 reward_distribution_period_blocks
 86_400 blocks
 §9
@@ -2941,7 +3031,7 @@ subsidy_duration_blocks
 315_360_000 blocks
 §9
 D-0436
-Subsidy minting duration (~3650 days = 10 years = 5 subsidy halving eras), after which it sunsets automatically.
+Exclusive subsidy sunset block (~3650 days = 10 years = 5 × halving_interval_blocks), at and after which ( now >= SubsidyEndBlock ) on_initialize mints 0.
 Staking & Delegation
 Parameter
 Value
@@ -2955,7 +3045,8 @@ Minimum self-stake to register as a miner (anti-Sybil).
 miner_commission_cap_percent
 20 percent
 §6.1
-Maximum commission a miner may charge delegators.
+D-0530
+[DEPRECATED — D-0530] Legacy maximum commission a miner could charge delegators (20%; yellowpaper §6.1).
 miner_unbonding_blocks
 604_800 blocks
 §6.1
@@ -3109,6 +3200,16 @@ paid_storage_enabled
 cfg!(feature = "paid-storage-unratified") flag
 §5.4
 Build-time gate for the unratified paid agent-storage pallet (yellowpaper §5.4, R5.4k).
+D-0528 sponsor-owned registration bonds (devnet/testnet only)
+Parameter
+Value
+§
+Decision
+Description
+sponsored_self_stake_enabled
+cfg!(feature = "sponsored-self-stake") flag
+D-0528
+D-0528: active sponsored principal counts toward the miner capacity bond and the validator effective minimum, and sponsors may post an operator's whole registration bond (sponsor_register_miner / sponsor_register_validator).
 PoUI submission rate limit
 Parameter
 Value
@@ -3238,9 +3339,9 @@ validators_to_promote
 Per-rotation promote count from the queue (stake >= current minimum). yellowpaper §15.5.
 validator_active_set_cap
 1_000 count
-§15.5
+§9.3
 D-0437
-Maximum active validators admitted by rotation or rejoin. yellowpaper §15.5.
+Maximum active validators in ActiveValidators (admitted by rotation promotion from ValidatorQueue or direct un_jail/rejoin restoration). yellowpaper §9.3 R9.9, §15.5.
 validator_min_active_validators
 4 count
 §15.5
@@ -3256,7 +3357,7 @@ Performance-score updates required within one rotation interval before a validat
 ejection_cooldown_blocks
 604_800 blocks
 §15.5
-Cooldown (~7 d) before an ejected validator may rejoin (stake topped to current minimum). yellowpaper §15.5.
+Cooldown (~7 d) before a rotation-ejected validator (whose self-stake freeze was thawed on ejection) may re-register into ValidatorQueue at effective_minimum_stake; configured in Config, enforcement in register pending.
 validator_unbonding_blocks
 1_814_400 blocks
 §13
@@ -3341,8 +3442,8 @@ Bond a challenger posts to open a session dispute (anti-griefing). yellowpaper �
 slash_fraud_percent
 100 percent
 §13.2
-D-0409
-Full-burn fault class: Collusion / EvidenceForgery / TEE-attestation failure / correlated equivocation / double-spend → 100% slash + eject + blacklist. yellowpaper §13.2.
+D-0529
+Full-slash fault class (100% routed to FLOPFoundationAccount, zero burn per D-0529): Collusion / EvidenceForgery / TEE-attestation failure / correlated equivocation / double-spend → 100% slash + eject + blacklist. yellowpaper §13.2.
 channel_audit_forfeit_slash_ppm
 1_000_000 ppm
 §12.1
@@ -3436,13 +3537,15 @@ Value
 Decision
 Description
 tx_fee_burn_percent_live
-10 percent
+0 percent
 §9.1
-LIVE burn fraction of the base+length+weight tx fee (10%).
+D-0529
+LIVE burn fraction of the base+length+weight tx fee (0%; D-0529).
 tx_fee_author_share_percent_live
 100 percent
 §9
-LIVE share of the UNBURNED remainder paid to the block author (= 90% of the whole fee after 10% burn).
+D-0529
+LIVE share of the transaction fee paid to the block author (= 100% of the whole fee under 0% burn, D-0529).
 tx_weight_to_fee
 5_000_000 base units/weight (1 base unit = 10^-18 FLOP)
 §9.1
@@ -3554,21 +3657,24 @@ subsidy_total_per_block
 16 FLOP
 §9
 D-0436
-8 Labs + 8 Foundation in halving era 0 (years 1-2), on top of the 96 FLOP reward (yellowpaper §9); halves with the reward (16 -> 8 -> 4 -> 2 -> 1 combined) and is exactly 0 from era 5, where the reward floors.
+8 Labs + 8 Foundation in halving era 0 (years 1-2), on top of the 96 FLOP reward (yellowpaper §9); halves with the reward ( era(b) = ⌊b / H⌋ : 16 -> 8 -> 4 -> 2 -> 1 combined) and is exactly 0 from era 5 ( b = 315,360,000 ), where the reward floors.
 emission_at_end_of_era6
-12_109_824_000 FLOP
+12_109_823_904 FLOP
 D-0436
-2·R₀·H = 12,109,824,000, reached exactly at end of era 6 (~year 14) under max_halvings=5 — one era earlier than the superseded maxHalvings=6 put it (hence the rename from emission_at_end_of_era7).
+2·R₀·H − R₀ = 12,109,823,904 (2·R₀·H = 12,109,824,000 before subtracting unrewarded genesis block 0, R9.7), reached at the end of era 6 (block 441,503,999, ~year 14) under max_halvings=5 — one era earlier than the superseded maxHalvings=6 put it (hence the rename from emission_at_end_of_era7).
 emission_through_halving_eras
-11_920_608_000 FLOP
+11_920_607_904 FLOP
 D-0436
-R₀·H·63/32 = 63,072,000 × (96+48+24+12+6+3) = cumulative emission through the halving phase (end of era 5, ~year 12) under max_halvings=5.
+R₀·H·63/32 − R₀ = 63,072,000 × (96+48+24+12+6+3) − 96 = 11,920,607,904 (11,920,608,000 before subtracting unrewarded genesis block 0, R9.7) = cumulative emission through the halving phase (end of era 5, block 378,431,999, ~year 12) under max_halvings=5.
 floor_annual_emission
 94_608_000 FLOP
 D-0436
 perpetual floor tail: 3 FLOP/block × 31,536,000 blocks/yr (= 189,216,000 FLOP/era).
 max_delegators_per_miner
 10_000 count
+§6.1
+D-0530
+[DEPRECATED — D-0530] Superseded by operator self-stake-only ruling (§6.1, §15.2); legacy MinerStaking.MaxDelegatorsPerMiner constant retained pending pallet cleanup.
 agent_daily_cap_autonomous
 500 FLOP
 §6.2
@@ -4074,9 +4180,9 @@ settle / force_settle → finalize / timeout / dispute
 C.7 Extend
 top_up_escrow ; duration bounded; cross-miner chaining
 §12.1
-C.1 Onboard. Bond ≥ the capacity-proportional requirement (§6.1) via
-miner_staking::register_miner(commission) ; unbonding is slash-locked while any session/dispute/audit is
-open. Complete the §7 timed benchmark (SOFT: no inventory ceiling; HARD: bounded by the summed attested
+C.1 Onboard. Bond ≥ the capacity-proportional self-stake requirement (§6.1) via
+miner_staking::register_miner(commission) (miner stake is self-stake only; the commission argument is
+deprecated under D-0530); unbonding is slash-locked while any session/dispute/audit is open. Complete the §7 timed benchmark (SOFT: no inventory ceiling; HARD: bounded by the summed attested
 (SKU,count) ceiling). Deposit capacity stake before activation; the worker renews the seven-day cap
 from fresh canaries. Register each served model via
 model_registry::register_miner(...) and bind the measured dm-verity root ( set_measured_root ; §3.3).
@@ -4128,16 +4234,16 @@ active validators by stake, 1.1× for finality-committee members, liquid on issu
 —
 Agent & staker legs (10% + 5%)
 (emission)
-sovereign pool accounts — parked, no distribution policy ( E.40 )
+sovereign pool accounts — 10% agent pool + 5% duration-locked community staking pool (7 tiers, zero slashing risk, D-0530); onward distribution parked ( E.40 )
 —
 Protocol-runway subsidy (+16 FLOP/block era 0; halves 16 → 8 → 4 → 2 → 1 with the reward)
 protocol mint
 Labs 8 · Foundation 8 — not participant revenue
-terminates Day 3650 (era 5), where the reward floors; 1,955,232,000 FLOP total
+terminates Day 3650 (era 5), where the reward floors; 1,955,231,984 FLOP total ( 315,359,999 produced blocks 1..=315,359,999 )
 Chain inclusion fee = base fee + encoded-length fee + adjusted-weight fee
 tx sender
-80% miner-proxy + 10% validator share → block author (co-located until per-miner G_n attribution); tips 100% author
-10% burn ( BurnFees )
+100% to block author ( tx_fee_author_share_percent_live , AllFeesToAuthor ); tips 100% author
+0% burn ( tx_fee_burn_percent_live = 0%, BurnFees , D-0529)
 Session escrow settle
 agent
 miner 85% ( inference_fee_miner_share_ppt ) · validators 15% ( inference_fee_validator_share_ppt , of which audit_fee_split_ppm = 1% funds the audit pool; validator remainder distributed intra-pool by R9.5 weight, liquid on issue per D-0518)
@@ -4153,7 +4259,7 @@ refund to agent
 Failed/early close penalty φ·(E−P)
 (escrow)
 —
-burn / Foundation, never miner
+FLOP Foundation ( FLOPFoundationAccount , zero burn per D-0529), never miner
 DA ephemeral (quotes/proofs/transcripts/I-O)
 — (path-gated)
 —
@@ -4179,24 +4285,25 @@ payer / validator
 separate holds, never service revenue
 release / objective fault disposition under E.54
 Slashing proceeds (all fault paths)
-slashed operator / delegator / sponsor
+slashed operator / sponsor
 FLOP Foundation ( FLOPFoundationAccount )
-— (transfer)
-Delegated-loss waterfall
-slashed operator + delegators + sponsors
-operator self-stake first, then delegators pro-rata, then sponsors at the fault rate
-Foundation
+0% burn (100% transfer, D-0529)
+Slash loss waterfall
+slashed operator (+ any E.32 sponsor backing; third-party delegation prohibited per D-0530)
+operator self-stake first, then any E.32 sponsors at the fault rate
+Foundation ( FLOPFoundationAccount )
 The base fee converts the extrinsic base weight with WeightToFee ; the encoded-length fee uses
 tx_length_to_fee , and the adjusted-weight fee applies the targeted fee
 multiplier (floor 1) to WeightToFee of dispatch weight, using
 tx_weight_to_fee . The tip is additional to the inclusion fee. The
 flop-poui inference-work price (base+priority)·gflops/1000·precision_mult (§4.2) is a separate
-charge. The 80/10/10 split is the ratified target; the block-author payout above is the interim
-runtime realization (§9.1 R9.6).
+charge. Under D-0529, protocol-wide transaction-fee burn is 0% ( BurnFees = 0 ) and 100% of inclusion
+fees and tips route to the block author (§9.1 R9.6).
 Runtime-constant ⇄ SDK/explorer cross-map and the residual indexer schema cleanup
 ( reward_distributions burn_share / treasury_share / staking_share vs. the emitted
 miner_share + validator_share ) are tracked as an implementation cleanup, not a protocol decision.
-Provenance: D-0435 , D-0408 , D-0403 , D-0412 , D-0407 , D-0409 , D-0421 . Grounding:
+Provenance: D-0435 , D-0408 , D-0403 , D-0412 , D-0407 , D-0409 , D-0421 , D-0529 , D-0530 ,
+D-0531 . Grounding:
 fee-design.md, miner-validator-economics.md,
 agent-token-economics.md.
 Appendix E — Open Specification Items
@@ -4241,16 +4348,13 @@ maxDelay , FOCIL enforcement, and path-binding remain open. Home: §12.1, §13.2
 E.27 — Session max-duration extension + re-attestation cadence wiring [PARTIAL] . The cadence bound
 k ≤ min(Bond/v_turn, T_tcb/t_turn) is specified; in-place max-duration extension and the re-attestation
 cadence are not yet wired. Home: §12.1, Appendix C. Blocking: #682 (SPEC-025).
-E.41 — Active-set cap vs. BABE authority bound [PLANNED] . D-0437 ratifies
-validator_active_set_cap = 1,000, and every promotion path enforces
-it, but MaxAuthorities = MAX_ACTIVE_VALIDATORS = 200 , and ValidatorSessionManager::new_session
-passes the whole ActiveValidators set to pallet_session untruncated, so an active set above 200
-collides with the authority bound. Resolve by either (a) raising MAX_ACTIVE_VALIDATORS to the cap,
-making every active validator a BABE authority, or (b) specifying a selection rule that draws the
-authority set as a subset of the active set — a third sampling layer alongside the §15.4 committee draw,
-and therefore consensus-critical. Also open in the same item: aligning the ConstU32<10_000> storage
-bound with the cap, which is a storage-layout change needing a decode-compat test. Home: §15.5, §15.4.
-Decision: D-0437. Blocking: #1393.
+E.41 — Active-set cap vs. BABE authority bound [RESOLVED] . D-0437 ratifies
+validator_active_set_cap = 1,000. Resolved via Option (a) (D-0526):
+MAX_ACTIVE_VALIDATORS and MaxAuthorities are raised to 1,000 so every active validator is a BABE
+block authoring authority. AlephBFT finality remains sub-sampled to the 100-member PoUI-gated committee
+( finality_committee_size = 100, AlephMaxCommittee = 100).
+Storage bound for ActiveValidators is aligned from ConstU32<10_000> to ConstU32<1_000> with
+decode-compat verified against prior SCALE encoding. Home: §15.5, §15.4. Decisions: D-0437, D-0526. Closed: #1393.
 E.42 — Committee seat-capture model [TBD] . Establish a capture bound for the implemented
 weighted-without-replacement draw over distinct eligible identities. The model must use seat count as the
 AlephBFT safety variable and cover unequal stakes, small eligible pools, stake splitting, repeated draws,
@@ -4280,7 +4384,7 @@ Historical credit and issued rewards are preserved, with no implemented clawback
 still needs independently auditable/final execution evidence, challenge standing/deadlines, retention
 of collectible collateral, and correction/recovery of historical credit/rewards and eligibility.
 The distinct decision ID and exact public bundle await owner approval. Home: §3.6, §9, §11.2, §12.1,
-§15.6. Tracking: #1494. Private evidence: runtime observations.
+§15.6. Tracking: #2375; #1494's payment-only containment is completed. Private evidence: runtime observations.
 E.45 — Effective-challenge incentive model [TBD] . Define players, utilities, challenger rewards and
 costs, coalition/bribery behavior, exposure horizon, collectible collateral, and miner-wide reservation
 across concurrent channels. Expand p_effective into availability, selection, inclusion, correct
@@ -4384,39 +4488,48 @@ and expected payable in an explicit base unit, transaction fee, and any external
 Until those fields have a canonical mapping, routers preserve source units and decline cross-provider
 ranking. Blocking: #1597 (reproducible long-context G_n ) and #1586 (reservation price formation).
 Tracking: #1825.
-E.56 — Small-set rotation ejection guard [TBD] . R15.5 ejects a fixed
-validators_to_eject = 50 per rotation with no active-set floor. On an
-active set of at most 50 with an empty or under-staked ValidatorQueue , the first rotation empties
-ActiveValidators ; block authoring continues on stale authorities while the finality committee, drawn
-from the active set (§15.4), empties. The launch cohort is 20–50 seats (D-0507). Specify the minimum-set
-guard on every removal path (rotation, jail, kick) and whether an ejection that would breach it is
-skipped or truncated. Placeholder: rotation is modelled as unsafe on any active set at or below the
-eject count, and a deployment keeps the set above it; no conformance claim for rotation on sets of at
-most 50. Home: §15.5. Blocking: D-0508 ratification (which carries the guard) or a separate consensus
-decision, plus the pallet change. Tracking: #1727.
+E.56 — Small-set rotation ejection guard [PARTIAL; policy TBD] . Runtime containment is implemented:
+pallet_validators enforces validator_min_active_validators =
+4 on voluntary deregistration, jail, kick, and rotation ( ensure_can_remove_from_active ), caps rotation
+ejection by validators_to_eject = 50,
+validator_rotation_churn_percent = 10%, and
+validator_min_scored_samples = 3, and slashes/blacklists a proven
+fault at the floor immediately while deferring seat removal until rotation promotes replacements. Open:
+the floor's relation to the seeded launch cohort (20–50 seats, D-0507), to E.42's committee-safety
+premise, and whether an ejection batch that reaches the floor is skipped or truncated under the ratified
+rotation policy (D-0508). Placeholder: the 4-validator floor is a non-drain guard, not an N=100
+committee-safety proof. Home: §15.5. Blocking: D-0508 ratification and E.42 alignment. Tracking: #1792,
+#1711; containment #1727 completed.
 E.57 — Validator unbonding vs dispute lifecycle [TBD] . State one right-hand side for the validator
 stake-exit bound and make §15.7, V11 and Appendix I agree with it and with the runtime. D-0419 ratifies
-freeze-while-open for all stake; the validator-side freeze is not wired, and the margin as V11 composed
-it (retention W 14 d plus a 7 d challenge window, 2 h response and one 2 h R13.0b extension = 21 d
-4 h) exceeds validator_unbonding_blocks = 21 d by up to 4 h,
-while the §1.2 coupling (challenge + response + extension ≤ W ) bounds the lifecycle by W when it
-starts inside retention. Define the validator "dispute lifecycle" (attestation bundle, DA audit,
-mismatch quorum) and its start clock. Placeholder: the validator relies on the 21 d cooldown; no
-unbond-during-dispute conformance claim on the validator side. Home: §1.2, §13.2 V11, §15.7,
-Appendix I. Blocking: a decision choosing freeze (pallet change) or margin (value or composition),
-recorded as a D-id superseding D-0419's validator leg. Tracking: #1607.
+freeze-while-open for all stake; the validator-side freeze is not wired, and under R1.2a's multi-round
+bisection worst-case dispute lifetime D + (2·⌈log₂ n_max⌉ + 2)·R = 763,200 blocks ( 8 d 20 h at
+n_max = 1,024 , R = 2 h ; replacing the superseded single-turn 7 d + 2 h + 2 h = 7 d 4 h bound),
+sequential composition with DA retention W ( 14 d = 1,209,600 blocks) gives W + 8 d 20 h = 22 d 20 h
+( 1,972,800 blocks), which exceeds validator_unbonding_blocks =
+21 d ( 1,814,400 blocks) by 1 d 20 h ( 158,400 blocks), whereas the §1.2 coupling ( 763,200 ≤ W )
+bounds the lifecycle by W ( 14 d < 21 d ) when it starts inside retention. Define the validator
+"dispute lifecycle" (attestation bundle, DA audit, mismatch quorum) and its start clock. Placeholder:
+the validator relies on the 21 d cooldown; no unbond-during-dispute conformance claim on the validator
+side. Home: §1.2, §13.2 V11, §15.7, Appendix I. Blocking: a decision choosing freeze (pallet change) or
+margin (value or composition), recorded as a D-id superseding D-0419's validator leg. Tracking: #1607.
 E.31 — DA-loss terminal settlement split [TBD] . Resolve whether D-0430's full-refund rule
 remains in force or a separately justified "pay last co-signed cumulative receipt, refund the
 unverifiable tail" rule supersedes it, including the evidence predicate, work-credit and forward-channel
 disposition. Placeholder: full escrow refund on terminal unrecoverable DA. Home: §13.0, §13.2.
 Blocking: #1948.
-E.32 — Sponsored stake refund semantics [PARTIAL] . Base refundable sponsored stake landed. Still
-open: whether sponsored stake can satisfy self-stake, sponsor refund authority, reward ownership (the
-runtime records an operator-or-sponsor reward policy per position), per-sponsor/operator caps,
-testnet-only flags, disclosure. The slash waterfall is fixed in §11.3. Placeholder: sponsor-owned
-principal is slashable backing; refund only after role unbonding + finalized prefix; mainnet does not
-count sponsor stake as self-stake without a ratified decision. Home: §11, §15, Appendix C/D. Blocking:
-#683.
+E.32 — Sponsored stake refund semantics [PARTIAL] . D-0530 prohibits third-party delegated staking
+into validators or miners (operator stake is self-stake only), leaving only institutional/Foundation
+sponsored stake ( SponsorPosition ) in scope here. Ratified for devnet and testnet (R6.1a): a
+sponsor-owned, stake-only bond that counts as self-stake on runtimes with
+sponsored_self_stake_enabled , refunded only to the sponsor after
+the role unbonding window on the finalized prefix, reward routing per the recorded position policy, and
+own and sponsored stake disclosed separately. Still open for mainnet: whether sponsored stake can ever
+satisfy self-stake, per-sponsor and per-operator caps, and slash collectibility when the sponsor holds its
+frozen principal under another pallet's fungible hold (holds overlap freezes; the same gap applies to
+self-stake and delegator freezes). Such a slash fails atomically, and the dispatch that needs it fails
+with it: a channel finalize that forfeits audit stake cannot complete until the hold is released. The slash waterfall is fixed in §11.3. Placeholder: mainnet does not
+count sponsor stake as self-stake. Home: §6.1, §11, §15, Appendix C/D. Blocking: #683 (mainnet).
 E.33 — SOFT-tier (non-TEE) miner class [TBD] . Define the non-TEE assurance tier end to end: entry
 (verified calibration burst + stake, no TEE/SKU evidence), settlement (miner session-key turn signatures
 agent receipt in place of enclave signatures), dispute resolution (validator quorum over checker-lane
@@ -4457,10 +4570,13 @@ dispute window reverses unlock or spend credit follows E.44. Residual risk: once
 a miner can buy inference from itself through an agent it controls and unlock the rest at the 15%
 validator fee leg (of which 1% funds the audit pool; D-0525), roughly 11.25% of principal; an agent can
 likewise pay a miner it controls from locked principal, receive about 85% of it back as that miner's
-payout, and unlock a further third of the spend. No runtime common-control rule binds either (see E.49). Decide the
+payout, and unlock a further third of the spend. No runtime common-control rule binds either (see E.49). Under
+D-0531 (#1358), the workbook's legacy on-chain referral commission model (6–10%) is superseded by a
+public explorer leaderboard and periodic referral lotteries funded from
+genesis_reserve = 800,000,000 FLOP and settled off-chain. Decide the
 unallocated-remainder disposition, publication of operator-held filter inputs, and the
 genesis_reserve release controller. Home: §8.2, §9.3. Blocking: #257,
-#1175, #1354, #1357.
+#1175, #1354, #1357, #1358.
 E.54 — Paid agent-storage activation profile [RATIFY] . Fix the §5.4 canonical wire widths/order,
 message domains and cross-language vectors; ciphertext/chunk/erasure/key-wrapping suites; capability,
 revocation, lane-close and key-recovery boundaries; the funding-pinned lane claim window
@@ -4511,18 +4627,18 @@ Tracking: #1564, #1565, #1566, #1567, #1568, #1569; Lean, Quint and simulation e
 #2397, #2142 and #2152.
 E.40 — Agent & staker leg distribution [TBD] . Specify how the
 agent_share_ppt (10%) and staker_share_ppt (5%)
-pools are paid out: the eligible set (the staker leg is defined as all FLOP stakers other than miners
-and validators), the pro-rata basis (agents: verified inference spend, unconfirmed), cadence, dust
-handling, and, for the staker leg, whether payouts are liquid on issue (agent-leg payouts are liquid
-under R9.13). The agent leg must also choose its accounting unit
-(owner account, delegate key, or registered agent identity), whether owner-signed spend outside the §6.2
-delegate caps counts (yellowpaper#31), and its spend
-basis: escrow-settled reserved value or work-settled Σ G_n over
-co-signed, TOPLOC-carrying turns
-(yellowpaper#32). Per-identity accounting makes
-identity count the reward lever, so per-identity credits need verifiable-demand gating. Until this
-ratifies both legs accrue in sovereign pool accounts and are never distributed (§9.1 R9.12).
-Placeholder: pro-rata by stake for the staker leg; the agent accounting unit and spend basis remain
+pools are paid out: under D-0530, the 5% staker_share_ppt leg is allocated to
+the duration-locked community staking pool across seven lock duration tiers with zero slashing risk and
+no validator or miner intermediary (exact tier weights and claim distribution mechanics remain E.40); the
+eligible set for the agent leg and its pro-rata basis (agents: verified inference spend, unconfirmed),
+cadence, dust handling, and, for the staker leg, whether payouts are liquid on issue (agent-leg payouts are
+liquid under R9.13). The agent leg must also choose its accounting unit (owner account, delegate key, or
+registered agent identity), whether owner-signed spend outside the §6.2 delegate caps counts
+(yellowpaper#31), and its spend basis: escrow-settled reserved value or work-settled Σ G_n over
+co-signed, TOPLOC-carrying turns (yellowpaper#32). Per-identity accounting makes identity count the reward
+lever, so per-identity credits need verifiable-demand gating. Until this ratifies both legs accrue in
+sovereign pool accounts and are never distributed (§9.1 R9.12). Placeholder: duration-locked community
+staking pool across 7 tiers for the staker leg; the agent accounting unit and spend basis remain
 unconfirmed, with both escrow-settled and work-settled bases open. Home: §9. Blocking: #1350, #1351.
 Appendix F — Message & Storage Formats
 Canonical on-the-wire and on-chain field layouts (normative). All hashes are 32 bytes; multi-field
@@ -4850,12 +4966,18 @@ G.3 Staking, calibration, vesting, DA, HTLC
 Extrinsic
 Pallet
 Effect
-register_miner(commission) / unbond
+register_miner(commission) / unbond (commission, delegate , and set_commission deprecated, D-0530)
 miner_staking
-bond ≥ capacity-proportional requirement (§6.1); slash-locked unbond
-register / rotate / do_slash
+self-stake bond ≥ capacity-proportional requirement (§6.1); slash-locked unbond
+register / rotate / un_jail / rejoin / do_slash
 validators
-self-stake register → queue; stake-ordered rotation; single slash authority
+register freezes effective_minimum_stake() and queues in ValidatorQueue ; rotate promotes from ValidatorQueue to ActiveValidators and ejects/thaws; un_jail (after MinJailBlocks = 3,600 for liveness jail) and rejoin (for extended-downtime kicks, topping up self-stake to effective_minimum_stake() ) restore directly to ActiveValidators while below ActiveSetCap = 1,000; single slash authority
+sponsor_register_miner(miner, amount, commission, reward_policy) / sponsor_top_up(position_id, amount)
+miner_staking ; sponsor (signed)
+R6.1a; rejected unless sponsored_self_stake_enabled ( SponsoredSelfStakeDisabled ). Register: register_miner 's admission checks, amount ≥ required_self_stake_for(miner) , sponsor backing beyond its existing staking freezes and index room; records own stake 0 plus an Active sponsor position frozen at the sponsor; emits MinerRegistered{self_stake: 0} then SponsorPositionCreated . Top-up grows the caller's Active position ( SponsorPositionToppedUp ). Release: sponsor_unbond → sponsor_withdraw ; deregister_miner unbonds every Active position unless the miner is busy. The slash-proceeds account is rejected as sponsor here and, on enabled runtimes, in sponsor_miner . On enabled runtimes the sponsor may hold no other staking freeze in either staking pallet, here and in sponsor_miner , and a sponsor account cannot then register_miner , top_up_self_stake or delegate ( SponsorStakeOverlap ). register_miner and this call wait until the account's positions from an earlier registration are withdrawn ( StaleSponsorPositions ); the operator may withdraw them after the finalized unlock and fully unbond an orphaned one. A quarantine from the activation scan ( LegacyOverlapCount ) suspends all sponsored credit. Errors InsufficientSelfStake , InvalidSponsorAmount , TooManySponsorPositions , NotSponsor , InvalidSponsorPositionStatus , SponsorIsSlashProceedsAccount , SponsorStakeOverlap
+sponsor_register_validator(validator, amount, reward_policy) / sponsor_top_up(position_id, amount)
+validators ; sponsor (signed)
+R6.1a; same gate. Register: register 's admission checks, amount ≥ effective_minimum_stake() , no active sponsorship left from an earlier registration ( StaleSponsorPositions ); queued like register ; emits ValidatorRegistered{self_stake: 0} then SponsorPositionCreated . Top-up as for miners. deregister unbonds every Active position. The slash-proceeds account is rejected as sponsor here and, on enabled runtimes, in sponsor_validator . The same one-staking-freeze rule applies, with register , rejoin and delegate as the own-stake paths ( SponsorStakeOverlap ). On enabled runtimes sponsor_unbond moves an active validator it takes below the effective minimum back to the queue ( MinimumActiveValidators at the floor)
 accept_benchmark_burst(...) / renew_benchmark_cap(...)
 hw_calibration
 stake-backed aggregate cap / lease renewal
@@ -4981,12 +5103,16 @@ PLANNED: recency still written from prover credit only ( ValidatorWorkRecorder c
 validators::note_verified_work ; runtime ValidatorWorkRecorder · D-0439 · #1552/#1554
 Committee Sybil capital: self-stake vs backing
 §2.3, §15.2
-GAP: the committee gate compares total_stake (self + delegated + sponsored) with effective_minimum_stake() , and that backing is not locked as distinct capital ( delegate freezes without a balance check; sponsor_validator checks each tranche with reducible_balance(.., Force) , which ignores existing freezes; freezes overlap rather than add). Self-stake is floor-checked at register / rejoin and from the recorded bond at queue promotion; MinSelfStakeRatio is checked only when backing is added, and a liveness slash charges self-stake first while un_jail restores without a re-check (E.42)
-validators::{delegate, sponsor_validator, register, do_rotate, un_jail} ; do_slash_fraction · #848
+PARTIAL: D-0530 prohibits third-party delegated staking (self-stake only), while the runtime still exposes legacy delegate / sponsor_validator paths pending cleanup. The committee gate compares total_stake (self + delegated + sponsored) with effective_minimum_stake() . That backing is now distinct capital: every miner-staking and validators admission requires the account's balance to cover all of its staking positions, and one shared stake-ledger freeze holds their sum, because freezes overlap rather than add. An account that already owed more than it held before that freeze stays fully frozen but under-backed until topped up. GAP: self-stake is floor-checked at register / rejoin and from the recorded bond at queue promotion; MinSelfStakeRatio is checked only when backing is added, and a liveness slash charges self-stake first while un_jail restores without a re-check except on D-0528-enabled builds, where it restores the bonded floor like rejoin (E.42)
+validators::{delegate, sponsor_validator, register, refresh_stake_ledger, do_rotate, un_jail} ; do_slash_fraction ; runtime StakeLedgerFreeze · #848
 Queued validator self-stake top-up
 §15.2, §15.5
 GAP: register bonds exactly the effective minimum; extra free balance does not increase recorded self-stake. rejoin tops up only extended-downtime-kicked validators, so a queued candidate below a raised floor remains deferred until the floor falls or registration is replaced. Backing admission is bounded by recorded self-stake
 validators::{register, rejoin, do_rotate, delegate, sponsor_validator} · #1967
+Sponsored registration bonds (R6.1a)
+§6.1, §15.2
+PARTIAL: source landed; on by build feature in the devnet ( volta ) and testnet runtimes (the feature alone is a compile error; CI checks the default-feature mainnet node reports it off); the sponsor's own fungible holds can still overlap its frozen principal (E.32)
+miner_staking::{sponsor_register_miner, sponsor_top_up, deregister_miner, is_capacity_bonded} ; validators::{sponsor_register_validator, sponsor_top_up, deregister, do_rotate, rejoin} ; miner_slashing::slash_audit_forfeit · #2676
 Three safety sub-proofs
 §2.3
 GAP: seat-capture/undersized/bootstrap bridge open (E.42)
@@ -5085,9 +5211,9 @@ H.4 Primitives, calibration, vesting, emission (§6–§9)
 Requirement / mechanism
 Status
 Code path · tracker
-balances/multisig/proxy/staking/delegation/vesting
+balances/multisig/proxy/staking/vesting (operator delegation deprecated per D-0530)
 LIVE
-respective pallets · D-0408
+respective pallets · D-0408/D-0530
 Capacity-proportional miner self-stake (linear, no cap)
 LIVE (value provisional)
 miner-staking · D-0418
@@ -5139,9 +5265,9 @@ block-rewards , flop-subsidy · D-0436/D-0421/D-0408/D-0435
 Reward liquidity on issue (§9.1 R9.13)
 LIVE (validator earnings and sponsored-stake payouts are liquid, like the miner leg and the Labs/Foundation subsidy; earnings do not grow stake or its freeze. The agent and staker legs accrue in pool accounts until E.40 ratifies their distribution. The +9%/year baseline, capped at 1% of issuance, and max(baseline, ValueCoupledStakeFloor) eligibility floor remain independent: unchanged stake can fall below the growing floor)
 block-rewards → runtime ValidatorConsensusRewardSplit → validators ; flop-subsidy · #1356
-Tx-fee split (10 burn / 90 author live; 80/10/10 target)
-PARTIAL
-BurnFees / AllFeesToAuthor ; target #1945
+Tx-fee split (0% burn / 100% author, R9.6)
+LIVE
+BurnFees = 0 / AllFeesToAuthor = 100 · D-0529 · #1945/#2792
 Survival governor (both dampers)
 PARTIAL (default OFF)
 params::governor · D-0410
@@ -5198,8 +5324,8 @@ OpenGov + protocol_upgrade (Root) track; Foundation submit gate; de-sudo
 LIVE (de-sudo genesis-time)
 governance/tracks.rs ; EnsureFoundationProtocolSubmit (#592) · D-0415/D-0425
 Validator onboarding/duties/rotation
-LIVE (stake-ordering PARTIAL; small-set ejection open, E.56)
-pallet_validators · D-0416 · #1727
+LIVE (stake-ordering PARTIAL; runtime minimum-set guard and bounded ejection implemented; floor/bootstrap/batch policy PENDING E.56/E.42)
+pallet_validators::{ensure_can_remove_from_active, do_rotate} ; tests rotation_never_drains_small_active_sets , minimum_set_guard_rejects_every_removal_before_mutation · D-0416 · #1792, #1711; containment #1727 completed
 Validator slashing table
 LIVE (correlated equivocation curve PARTIAL)
 pallet_validators::do_slash · D-0409/D-0420
@@ -5326,7 +5452,7 @@ session_keys · agent_wallet · agent_identity
 agent delegation + caps + circuit breaker (§6.2)
 96 · 97 · 98 · 100
 validators · miner_staking · delegation_cap · miner_slashing
-validator authority + rotation + slashing (§15); miner stake + delegation cap + slashing (§6.1, §11)
+validator authority + rotation + slashing (§15); miner self-stake + slashing (§6.1, §11; delegation_cap and miner_staking::delegate deprecated per D-0530)
 101 · 102 · 103
 model_registry · da_registry · compute_channel
 measured roots + decode-policy pins (§3.3); sovereign DA (§5.3); sessions (§12)

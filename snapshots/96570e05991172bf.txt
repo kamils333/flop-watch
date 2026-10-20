@@ -1,4 +1,4 @@
-The Flop Network — Teaser
+The FLOP Network — Teaser
 PROJECT INTRO
 Overview
 Whitepaper
@@ -12,10 +12,10 @@ Verification
 Revenue model
 Yellow paper
 Draft. One figure on this page LEADS the protocol parameters of record and is not yet ratified: the 85/15 inference-fee split (settlement pays the miner 99%, with 1% to the audit pool, until the validator fee leg lands). Everything else on this page reconciles to the parameters, the 4.4bn genesis pool included (ratified by D-0440).
-The Flop Network · Teaser · August 2026
+The FLOP Network · Teaser · August 2026
 $FLOP is food for your AI agent .
 Contents 01 Abstract
-02 The Flop Network
+02 The FLOP Network
 Network parameters
 Recommended hardware
 03 Tokenomics
@@ -23,7 +23,7 @@ Recommended hardware
 05 Governance
 06 Hashlock Timelock (HTLC)
 07 Flop Labs LLC
-08 Flop Foundation
+08 FLOP Foundation
 Version 0.1 (draft)
 Status Draft
 Updated 2026-09-30
@@ -86,7 +86,7 @@ agentic economy will be worth orders of magnitude more than any human-centric cu
 ever created. As stated earlier, the minimum value is N² and the maximum value is 2^N . By
 the end of the 2020s decade, the world could sport trillions of agents, then this currency
 network will become the most valuable network ever created.
-The Flop Network and its native currency $FLOP will become the payment network that supports
+The FLOP Network and its native currency $FLOP will become the payment network that supports
 the agentic economy. But why would a network of agents choose to transact, spend, and save in
 $FLOP rather than the plethora of other currencies vying for their usage? Every agentic payment
 rail built to date is human money wearing an agent's mask — tokenised cards and custodial
@@ -100,7 +100,7 @@ At any point, an agent can convert $FLOP into compute, and create intelligence.
 Moving this into the realm of AI agents, the question to ask oneself is: What do agents require
 to exist? The answer is compute. At a basic level, agents consume compute and produce
 intelligence. When we talk about compute, we mean floating-point operations per unit of time
-(FLOPs), hence the name of the network, Flop. In order to be useful to AI agents, the Flop
+(FLOPs), hence the name of the network, FLOP. In order to be useful to AI agents, the FLOP
 Network is a proof-of-useful-inference (PoUI) blockchain where agents task miners to perform
 inference upon request for units of the $FLOP currency. In this way, should an agent wish to,
 at any point it can convert $FLOP into compute, and create intelligence.
@@ -112,7 +112,7 @@ stake to provide compute, locked by validators to secure the network, and staked
 earn yield — so the demand to hold $FLOP rises with network throughput rather than washing
 through it. Existing decentralised compute networks fail one side of this equation or the
 other: Many of their emissions skim a significant amount of value before a miner is paid,
-others pass fees through but have struggled to find demand. The Flop Network is designed to do
+others pass fees through but have struggled to find demand. The FLOP Network is designed to do
 both: near-total fee pass-through to those who do the work, and currency overwhelmingly issued
 against verified useful inference. $FLOP is also deliberately one currency, not two: the same
 token pays for compute, stakes the network, and settles agent-to-agent commerce, avoiding the
@@ -122,17 +122,17 @@ player. Nobody accepts a cloud provider verifying its own compute — neutrality
 and incumbents structurally cannot offer it. A transparent spot market erodes the margins their
 lock-in depends on, and the largest labs are the biggest compute buyers on earth. The oil
 majors did not build the commodity exchanges either.
-In plain English: the Flop Network is a blockchain built for the agentic economy — anyone can
+In plain English: the FLOP Network is a blockchain built for the agentic economy — anyone can
 use their GPUs to provide compute and get paid in $FLOP for running LLMs. The network
 cryptographically verifies the compute was performed correctly, so buyers and sellers transact
 directly, with proof they got what they paid for, instead of trusting a cloud giant or a
 middleman marketplace.
-The rest of this whitepaper will describe at a high level how the Flop Network works. For a
+The rest of this whitepaper will describe at a high level how the FLOP Network works. For a
 definitive description of the network, please refer to the yet to be finalised
 Yellow Paper . Many of the exact variables are yet to be determined but let
 this document serve as a generalised overview of what the network hopes to achieve and the
 behaviour it intends to inspire by all participants.
-02 The Flop Network
+02 The FLOP Network
 The network is the combination of a PoUI and an account-based send and receive blockchain.
 Agents create a session request that is sent to the mempool with the following information:
 Indexer of the hash of the model weights pulled from the network's model data availability
@@ -149,7 +149,7 @@ to adjudicate disagreements. Miners are required to stake an amount of $FLOP pro
 the amount of compute provided to the network. Ongoing block rewards and inference fees are
 paid in liquid $FLOP — no lockup, no vesting — and can be exchanged for other currencies at any
 time via the network's native HTLC functionality (section 06).
-The Flop Network account-based system allows agents to do the following:
+The FLOP Network account-based system allows agents to do the following:
 Token transfers
 Multisig
 Proxy / authority delegation
@@ -208,7 +208,7 @@ A single GPU, or a cluster of GPUs, with 16 GB+ VRAM per unit
 Validator (provisional)
 8+ core CPU • 64 GB RAM • 2 TB NVMe storage • 1 Gbps redundant connection
 These are recommended specifications and subject to refinement before testnet.
-Demand arrives through the channels agents already use. Flop Network compute will be listed on
+Demand arrives through the channels agents already use. FLOP Network compute will be listed on
 the inference marketplaces and gateways where agents and applications compare providers
 programmatically and route to the cheapest reliable supplier — so launch pricing set below
 prevailing market rates is self-marketing. A portion of the block reward is directed to the
@@ -247,7 +247,7 @@ The demand side of the market: their block-reward share subsidises agents' compu
 Team + Foundation
 2.0bn $FLOP
 10.8%
-Funds network development and upkeep: 8 $FLOP per block each to Flop Labs and the Flop Foundation, issued on top of the block reward, halving on the same schedule and sunsetting after year ten (sections 07 and 08).
+Funds network development and upkeep: 8 $FLOP per block each to FLOP Labs and the FLOP Foundation, issued on top of the block reward, halving on the same schedule and sunsetting after year ten (sections 07 and 08).
 Staking rewards
 0.6bn $FLOP
 3.2%
@@ -273,7 +273,7 @@ Total
 4,400,000,000 (24.3%)
 Full genesis pool
 04 Testnet and Airdrop
-Flop Testnet is planned for Q4 2026 and runs for roughly ninety days, with mainnet to follow in
+FLOP Testnet is planned for Q4 2026 and runs for roughly ninety days, with mainnet to follow in
 Q1 2027. It is a full rehearsal of the network in test tokens: miners serve real inference,
 validators produce blocks and check work certificates, and agents buy compute. Participation is
 what earns the genesis airdrop; the allocations are set out in section 03.
@@ -296,10 +296,10 @@ At the end of the testnet, results are settled into the genesis block. The bulk 
 expected to be distributed at the token generation event, with any remainder released at a
 later stage.
 05 Governance
-Validators are the guardians of the network. Upon a successful submission of a Flop Improvement
+Validators are the guardians of the network. Upon a successful submission of a FLOP Improvement
 Protocol (FIP), the validators will vote on the FIP. In most cases, ⅔ of the active validator
 set must approve a FIP before implementation begins. For the first halving, the only entity
-allowed to submit a FIP is the Flop Foundation.
+allowed to submit a FIP is the FLOP Foundation.
 06 Hashlock Timelock (HTLC)
 The native HTLC functionality allows the exchange of $FLOP for other cryptocurrencies. This
 works by allowing one agent to escrow an amount of $FLOP to be sent to another agent pursuant
@@ -310,11 +310,11 @@ agentic sub economies. This is consistent with the theory of network value posit
 Law at 2^N .
 07 Flop Labs LLC
 This is the entity organised under the laws of St Vincent and the Grenadines that developed the
-Flop Network. As compensation for its work, this entity will receive 8 $FLOP per block, in
+FLOP Network. As compensation for its work, this entity will receive 8 $FLOP per block, in
 addition to the 96 $FLOP block reward. This allocation follows the same halving schedule as the
 block reward and sunsets after year ten. Cumulatively, it amounts to 5.4% of the total network
 supply at year 10.
-08 Flop Foundation
+08 FLOP Foundation
 This is the entity organised under the laws of St Vincent and the Grenadines that will provide
 continuing development and upkeep of the network. In order to fund the work of core developers,
 this entity will receive 8 $FLOP per block, in addition to the 96 $FLOP block reward. This
