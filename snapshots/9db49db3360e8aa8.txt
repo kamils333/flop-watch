@@ -1010,7 +1010,9 @@ through fee-bearing flows. Leased covers model weights + dm-verity images — a 
 storage fee but a refundable anti-spam deposit ( bytes × da_lease_deposit_per_byte ,
 held under a dedicated hold reason, returned in full on prune or withdrawal — never revenue),
 extendable by anyone for free ( top_up_lease , tx fee only), pruned only after lease_end + grace
-(14 d) and only while no consumer holds a usage pin . Pruning MUST be recoverable: the
+(14 d). For both retention classes, pruning MUST reject a blob while any consumer holds a
+usage pin ( pin_count > 0 ); a pin MUST NOT extend the retention deadline or permit new
+usage after expiry. Pruning MUST be recoverable: the
 dm-verity root is deterministic, so re-upload reproduces the same commitment and identity
 ( MeasuredRoots ) survives.
 R5.3f — Lease withdrawal. The publisher, and no other account, MAY call
@@ -1023,6 +1025,18 @@ it, and refund the full deposit to the publisher. Withdrawal does not by itself 
 already issued against the blob; how such an audit resolves is open (E.47).
 R5.3e — Reorg-safe serving. The off-chain indexer MUST serve only heights inside the AlephBFT
 finalized prefix (a finalized block can never orphan), never the best tip.
+R5.3g — Session evidence allocation. Only the named miner of a funded Open channel
+MAY allocate Ephemeral evidence through the composing session pallet. Allocation MUST
+be bounded to one immutable activation slot per SLA turn and one final transcript. Activation
+bytes MUST NOT exceed the session activation cap ;
+canonical FCC4 transcript bytes MUST NOT exceed 40 + 351 × SLA max_turns. An identical retry
+MUST verify the original publisher, size, retention class and unexpired registry binding
+without renewing expiry; a conflicting, expired or missing occupied-slot binding MUST reject.
+Registration MUST NOT satisfy TOPLOC, proof or payment gates. Publishers MUST establish
+finalized registration before assigned-provider upload and verify custody and reconstruction.
+After proof generation, retirement MUST recheck exact evidence bytes, current custody and
+natural retention through the full dispute horizon before settlement. Terminal channel closure
+MUST remove allocation bookkeeping without changing the DA retention contract.
 Leasing supersedes an unbounded "persistent" tier — model relevance is 6–12 months. Moving the TEE quote
 off the miner's HTTP server removes miner-only custody. It does not make availability independent of the
 validator set: registration, an unexpired record, successful spot audits, and reconstructability over the
@@ -1031,6 +1045,7 @@ repair, not an unconditional availability guarantee (E.47).
 Rationale & sources (non-normative)
 Sizing target and sovereign-DA decision: D-0402 (sovereign validator DA), D-0412 (DA is a validator
 duty, no per-byte fee; supersedes the fee provisions of D-0402/D-0407), D-0407 (leased model storage).
+D-0521 extends the prune pin guard to Ephemeral blobs without extending their expiry.
 R5.3f combines D-0407's rule that in-use leases remain stored with D-0412's publisher withdrawal and
 full refundable-deposit rule.
 Full design da-sovereign-validator-design.md; sizing
@@ -1589,7 +1604,12 @@ commissions; 5% duration-locked community staking pool). Grounding:
 agent-composition-primitives.md,
 agent-token-lifecycle.md,
 model-selection-pricing-inference.md,
-miner-capacity-stake-calibration.md. Prior art:
+miner-capacity-stake-calibration.md. The R6.2c latch and
+reset paths have a bounded model in
+session-circuit-breaker.qnt . An enclosing
+atomic batch that fails after the tripping call rolls the latch back with it; this is accepted, since
+the over-limit call never executes either way and a delegate gains nothing it could not get by
+staying under the limits. Prior art:
 Miniscript, Simplicity, Clarity, Marlowe, Move resources, UCAN. Status:
 Appendix H .
 7. Hardware Calibration & Drift
@@ -3408,6 +3428,10 @@ channel_max_settlement_turns
 1_024 count
 §12.1
 Hard cap on VerifiedTurns per settle/force_settle bundle, and the ceiling on an SLA's max_turns at open.
+channel_max_session_activation_bytes
+65_536 bytes
+§12.1
+Per-activation DA allocation cap for a funded Open session.
 channel_max_merkle_path_len
 64 count
 §12.1
@@ -3891,6 +3915,10 @@ ChannelRefundPenalty
 —
 channel_max_settlement_turns
 ChannelMaxSettlementTurns
+—
+—
+channel_max_session_activation_bytes
+ChannelMaxSessionActivationBytes
 —
 —
 channel_max_merkle_path_len
@@ -4723,6 +4751,9 @@ Constraint
 SettlementClass
 Standard=0 , CertificatePremium=1
 selected and fixed by open_channel ; force_open implies Standard ; CertificatePremium enables certificate-backed settlement; unknown tags reject under F.0
+SessionEvidenceSlot
+Activation(u32)=0 , Transcript=1
+immutable per-channel DA allocation; activation index below SLA max_turns; unknown tags reject
 TranscriptLeafVersion
 V0=0 , V1=1 , V2=2 , V3=3
 mandatory SCALE enum at the start of every current settlement/dispute turn container; unknown tags reject; verifier selects exactly one preimage and never retries
@@ -4901,6 +4932,10 @@ force_ack(channel_id, enclave_key)
 named miner (signed)
 bind the provenance-neutral session signing key; snapshot the miner-calibration assurance tier; state → Open
 not the named miner; window elapsed
+register_session_evidence(channel_id, slot, commitment, size_bytes:u32)
+named miner (signed)
+funded Open channel only; allocate bounded Ephemeral DA via R5.3g; identical retry preserves expiry; emit SessionEvidenceRegistered only for a new slot
+NotAParty; BadState; ZeroToplocCommitment; VerifiedTurnOutOfBounds; SessionEvidenceTooLarge; SessionEvidenceConflict; registry errors
 expire_force_open(channel_id)
 anyone (signed)
 refund escrow in full; FailedAcks += 1 if escrow ≥ floor
@@ -5221,7 +5256,7 @@ Declarative spend-condition layer; N-party escrow; capabilities
 PARTIAL
 D-0417 ( has-station Policy predicate LIVE: Hash / Sig / Before / After / Point leaves under And / Or / Threshold(k) ; N-party/capabilities PLANNED)
 Agent session keys + caps + circuit breaker
-LIVE (breaker trip latch PARTIAL: rolled back with the rejected call, R6.2c)
+LIVE (R6.2c latch survives the tripping call; an enclosing atomic batch that fails later still rolls it back)
 session_keys , agent_wallet
 10-minute benchmark entry (SOFT/HARD), deposit-first
 LIVE
@@ -5254,7 +5289,7 @@ Genesis airdrop funding and grants (§8.2)
 PARTIAL (genesis bridge absent; existing grant calls mint)
 scripts/python/utils/genesis_allocator.py ; airdrop-vesting · #1175
 Airdrop claims, unlock schedule, and locked compute spend (§8.2 R8.7, R8.8)
-PARTIAL (claims use finality and locked compute spend is wired; the pallet still vests every tier linearly with the retired miner performance adjustment and update_miner_performance , and lets any tier spend locked principal; no genesis quarter, earn-to-unlock credit, or Validator freeze and daily release; no Agent spend credit or spend cap, and compute-channel refunds re-freeze up to the locked principal a channel drew and revert the close if they cannot, without applying R8.8's payable-first draw. Miner self-stake over a still-frozen grant rides on overlapping AirdropVesting and MinerSelfStake freezes, but miner-slashing and validators lower only their own stake freeze before transferring proceeds, so a slash that reaches frozen grant principal fails today)
+PARTIAL (claims use finality and locked compute spend is wired; the pallet still vests every tier linearly with the retired miner performance adjustment and update_miner_performance , and lets any tier spend locked principal; no genesis quarter, earn-to-unlock credit, or Validator freeze and daily release; no Agent spend credit or spend cap, and compute-channel refunds re-freeze up to the locked principal a channel drew and revert the close if they cannot. Miner self-stake over a still-frozen grant rides on overlapping AirdropVesting and MinerSelfStake freezes, but miner-slashing and validators lower only their own stake freeze before transferring proceeds, so a slash that reaches frozen grant principal fails today)
 airdrop-vesting ; agent-wallet ; compute-channel · #1175
 Ghost Tasks: encrypted issuance + known-answer correctness canary
 LIVE
