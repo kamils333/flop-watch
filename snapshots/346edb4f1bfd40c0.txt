@@ -13,7 +13,7 @@ Revenue model
 Yellow paper
 Economic security · Draft design
 Cheating must not pay: the challenge game
-FLOP never re-runs inference to trust it. Every session leaves commitments that stay challengeable for a fixed window; a lottery and bonded disputes re-check slices of the work; an upheld fraud verdict burns 100% of the miner's stake. The game is sized so cheating loses money in expectation even when most single cheats slip through.
+FLOP never re-runs inference to trust it. Every session leaves commitments that stay challengeable for a fixed window; a lottery and bonded disputes re-check slices of the work; an upheld fraud verdict slashes 100% of the miner's stake to the Foundation. The game is sized so cheating loses money in expectation even when most single cheats slip through.
 Key points
 Every session leaves fingerprints: activation commitments (TOPLOC) and a co-signed transcript root, retained on the data-availability layer for the full challenge window — miner-funded, serve-or-slash.
 Challenges come from two directions: a random, unbiasable lottery over sampled slices of work, and bonded disputes opened by the paying agent or any active validator.
@@ -23,7 +23,7 @@ Challenge window
 Seven days today, bounded by how long the data-availability layer keeps the evidence. Under review to shorten toward hours — audited slices are small and re-verify in minutes.
 Fraud slash
 100%
-The full-burn fault class: upheld dispute fraud, collusion, and evidence forgery — slash, eject, blacklist.
+The full-slash fault class: upheld dispute fraud, collusion, and evidence forgery — slash to the Foundation, eject, blacklist.
 Audit rate
 2.5%
 SOFT-tier spot-check exposure: about one session in forty. The sampled-audit lottery is a separate dial, drawing 5% of turns by default. Both are governable, not fixed constants.
@@ -43,12 +43,12 @@ The sampled check is cheap by construction: re-running one prefill (~100× cheap
 A discretionary challenger posts a 100 FLOP bond, forfeited if the dispute is frivolous — spam prices itself.
 Bisection narrows any disagreement to a single turn in a handful of rounds, so dispute cost is independent of session length.
 What failing costs
-An upheld fraud verdict is the full-burn class: 100% of the miner's stake slashed, ejection, blacklist — the same maximum tier as collusion and evidence forgery — and the agent's escrow is refunded. Stake is capacity-proportional and grows with the compute a miner is calibrated to serve, sized against the fraud profit achievable inside the challenge window.
-Liveness faults (being offline) stay cheap (1–5%) — the burn is reserved for provable fraud.
+An upheld fraud verdict is the full-slash class: 100% of the miner's stake slashed to the Foundation, ejection, blacklist — the same maximum tier as collusion and evidence forgery — and the agent's escrow is refunded. Stake is capacity-proportional and grows with the compute a miner is calibrated to serve, sized against the fraud profit achievable inside the challenge window.
+Liveness faults (being offline) stay cheap (1–5%) — the full slash is reserved for provable fraud.
 A fraud conviction needs on-chain cryptographic evidence; there is no oracle input to bribe.
-Because stake scales with capacity, the largest miners face the largest absolute burn — fraud never pays off by growing.
+Because stake scales with capacity, the largest miners face the largest absolute slash — fraud never pays off by growing.
 Why the math closes
-Sampling never promises to catch every cheat — it makes cheating unprofitable. Even at the lower of the two dials, the SOFT tier's 2.5% spot-check rate, a single cheated slice slips through about 97.5% of the time, and that is fine: the odds of escaping every audit fall off exponentially as more slices are cheated, audits are spread across the work by value so stolen value tracks the number of draws, and the deterrence rule (slash × stake ≥ gain ÷ catch-rate) is closed by the 100% burn. Steal a small slice, risk the entire capacity-proportional stake: negative expected value at any realistic scale.
+Sampling never promises to catch every cheat — it makes cheating unprofitable. Even at the lower of the two dials, the SOFT tier's 2.5% spot-check rate, a single cheated slice slips through about 97.5% of the time, and that is fine: the odds of escaping every audit fall off exponentially as more slices are cheated, audits are spread across the work by value so stolen value tracks the number of draws, and the deterrence rule (slash × stake ≥ gain ÷ catch-rate) is closed by the 100% slash. Steal a small slice, risk the entire capacity-proportional stake: negative expected value at any realistic scale.
 One cheated slice is worth a small cut of a session; getting caught costs the whole stake — the asymmetry is the security.
 Cheating at scale is caught almost surely: the escape probability falls off exponentially in the amount of fraud.
 The two dials — audit rate and stake size — are substitutable; governance can raise either until honesty is the only profitable strategy.

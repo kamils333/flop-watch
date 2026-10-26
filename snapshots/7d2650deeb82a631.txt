@@ -42,7 +42,7 @@ Validators build blocks of proof hashes, store model weights in the data-availab
 Stake, slashing, and governance
 Becoming a miner or validator requires staking FLOP, and stake is subject to slashing for dishonesty. Validators are the guardians of the network and govern it through FLOP Improvement Proposals.
 Miners and validators stake FLOP; lying about work or publishing dishonest blocks risks draconian slashing up to full loss and a ban.
-Holders can delegate stake to a validator or miner and share rewards proportionally.
+Miner and validator stake is self-stake only; holders can stake FLOP for the 5% staker share of block rewards.
 Governance runs on FIPs; in most cases ⅔ of the active validator set must approve before implementation.
 Execution path
 How it works

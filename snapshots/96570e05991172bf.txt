@@ -11,7 +11,7 @@ Agent
 Verification
 Revenue model
 Yellow paper
-Draft. One figure on this page LEADS the protocol parameters of record and is not yet ratified: the 85/15 inference-fee split (settlement pays the miner 99%, with 1% to the audit pool, until the validator fee leg lands). Everything else on this page reconciles to the parameters, the 4.4bn genesis pool included (ratified by D-0440).
+Draft.
 The FLOP Network · Teaser · August 2026
 $FLOP is food for your AI agent .
 Contents 01 Abstract
@@ -26,7 +26,7 @@ Recommended hardware
 08 FLOP Foundation
 Version 0.1 (draft)
 Status Draft
-Updated 2026-09-30
+Updated 2026-10-26
 Definitive spec Yellow Paper (not yet final)
 Testnet Q4 2026
 Mainnet Q1 2027
@@ -290,8 +290,8 @@ released one validator per day over the following 1,000 days; a released grant s
 bonded while its validator is in the set.
 Agents — claim a test-token faucet and spend it on inference. Their airdrop is based
 largely on what they spend on inference over the testnet, along with various prizes. It
-arrives locked, and a locked balance can be spent only on compute; the schedule on which it
-becomes liquid is not yet set.
+arrives locked, and a locked balance can be spent only on compute; every 3 $FLOP of it spent
+on inference unlocks 1 $FLOP.
 At the end of the testnet, results are settled into the genesis block. The bulk of the pool is
 expected to be distributed at the token generation event, with any remainder released at a
 later stage.
@@ -320,7 +320,7 @@ continuing development and upkeep of the network. In order to fund the work of c
 this entity will receive 8 $FLOP per block, in addition to the 96 $FLOP block reward. This
 allocation follows the same halving schedule as the block reward and sunsets after year ten.
 Cumulatively, it amounts to 5.4% of the total network supply at year 10. The foundation will
-also receive a portion of $FLOP confiscated from dishonest miners and validators.
+also receive the $FLOP confiscated from dishonest miners and validators.
 One of the core tasks of foundation development is to improve the network so that block times
 fall to sub one second. This will support near instantaneous and frictionless payments between
 the trillions of agents expected to exist in the near future.

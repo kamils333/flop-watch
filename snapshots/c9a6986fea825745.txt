@@ -33,10 +33,10 @@ What validators do
 Validators build blocks that carry a commitment to each proof rather than the proof bytes, and they store the model weights that agents and miners rely on in the data-availability layer.
 Blocks carry a commitment to each proof, not the proof bytes; the evidence itself lives in the data-availability layer.
 Validators hold model weights in the DA layer so sessions can be served.
-The active validator set shares 10% of block rewards. Transaction fees burn 10%, with the rest headed for an 80/10 miner/validator split once per-miner attribution lands.
+The active validator set shares 10% of block rewards. Transaction fees are not burned: the block author receives the whole fee.
 Staking, rotation, and slashing
 Becoming a validator requires staking FLOP. Roughly every month the bottom 50 are replaced by the top 50 in waiting. The ratified rule ranks by stake above a minimum uptime and verification-liveness floor (attest, co-sign, audit — no GPU needed), so padding the metric cannot improve rank; the running network still ranks on those work and performance metrics themselves.
-Holders can delegate stake to a validator to earn a share of rewards.
+Validator stake is self-stake only; there is no delegated stake.
 Publishing a dishonest block risks draconian slashing and a permanent ban.
 About 50 validators rotate each month, today on recent verified work and performance score. Ratified: rank by stake above a verification-liveness floor instead (D-0439).
 Governance

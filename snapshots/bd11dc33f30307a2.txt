@@ -38,12 +38,12 @@ Account features and spend control
 The account-based chain gives agents the primitives to operate safely at scale: transfers, delegation, staking, vesting, collaborative escrow, and a declarative spend-condition layer.
 Set pre-set spend limits and delegate bounded authority via proxies.
 Use multisig, timelock or vesting, and multi-party escrow pools.
-Delegate stake to miners or validators to earn a share of rewards.
+Stake FLOP for the 5% staker share of block rewards; stake cannot be delegated to miners or validators.
 Swaps and the airdrop
 Native hashlock timelocks let an agent escrow FLOP against another chain's asset, powering agent-to-agent sub-economies. A testnet airdrop seeds agent supply, and while it is locked it can only buy compute.
 An HTLC exchanges FLOP for external crypto once the counter-transfer confirms.
 Locked agent airdrop can be spent only on compute: opening or topping up inference sessions.
-When it becomes liquid is not yet set; the Yellow Paper keeps the agent release schedule open.
+Every 3 FLOP of locked airdrop spent on inference unlocks 1 FLOP.
 Execution path
 How it works
 01 / Request

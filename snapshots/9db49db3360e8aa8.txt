@@ -159,7 +159,8 @@ SHOULD , SHOULD NOT , RECOMMENDED , MAY , and OPTIONAL are to be interpreted as 
 RFC 2119 / RFC 8174 when, and only when, they appear in capitals. Lower-case uses carry no normative
 weight. A statement with no keyword is descriptive context, not a requirement.
 What is normative. The numbered section bodies (§1–§15), Appendix A (Parameter Reference),
-Appendix F (Message & Storage Formats), and Appendix G (Extrinsic Index) are normative. Appendices B
+Appendix F (Message & Storage Formats), Appendix G (Extrinsic Index), and Appendix I (Pallet Index
+Reference) are normative. Appendices B
 (Sources), C (Miner Lifecycle — a worked walkthrough), D (Fee & Revenue Map — a derived summary),
 E (Open Items), and H (Conformance & Status Matrix) are informative except where they restate a
 normative rule and cite its home section.
@@ -2119,8 +2120,8 @@ INV-S01 / session nonce
 a session nonce MUST be monotonic (anti-replay)
 SessionInfo.nonce validated + incremented per use ( InvalidSessionNonce )
 INV-M06 / payout atomicity
-a miner→validator→burn payout MUST be all-or-nothing
-compute-channel payout_settlement : a failed miner transfer, agent refund or burn reverts the settling extrinsic, so no leg lands without the others
+a settlement payout MUST be all-or-nothing: the miner and validator legs, the agent refund and the φ·(E−P) transfer to FLOPFoundationAccount (R12.1d) either all land or none does
+compute-channel payout_settlement : a failed miner transfer, agent refund or penalty leg reverts the settling extrinsic, so no leg lands without the others (penalty-leg sink: Appendix H.5)
 Supply
 emission cap + halving monotonicity MUST hold
 tokenomics-supply.qnt
@@ -2189,7 +2190,7 @@ delegated staking is prohibited); where legacy or testnet sponsored backing (E.3
 order charges operator self-stake first and sponsors thereafter at the fault rate (legacy delegator
 waterfall entries are deprecated).
 Rationale & sources (non-normative)
-Provenance: task 1494 (confirmed payment-only scope; decision ID pending),
+Provenance: R11.2b payment-only scope,
 D-0409 (slashing-table reconciliation), D-0420 (correlated equivocation), D-0419
 (unbonding slash-lock), D-0529 (zero burn; 100% of slashes to FLOPFoundationAccount ),
 D-0530 (operator self-stake only; delegation waterfall deprecated). The P0 agent-economics sweep (INV-02, fail_task , session nonce, payout
@@ -2252,8 +2253,9 @@ equals one FLOP base unit. force_settle MUST reject with TariffExceedsEscrow whe
 MUST NOT clamp P or create negative payout legs
 ( pallets/pallets/compute-channel/src/lib.rs::{turn_tariff_pay,verified_work_from_turns} ). Otherwise,
 the agent is refunded (1−φ)·(E−P) , and the penalty φ·(E−P)
-( refund_penalty_phi_percent = 20%) MUST be burned/routed to
-the Foundation — never the miner. A miner-fault non-delivery uses φ = 0 (full refund). Conservation:
+( refund_penalty_phi_percent = 20%) MUST be transferred in full
+to FLOPFoundationAccount (§9.3 R9.10) with zero burn — never the miner. A miner-fault non-delivery uses
+φ = 0 (full refund). Conservation:
 P + (1−φ)(E−P) + φ(E−P) = E . Caller restriction and tariff magnitude on this path are E.24.
 R12.1e — Over-use. Handled by abort or in-place top_up_escrow (Lightning splice-in); the
 aggregate- G_n accumulator already grows unbounded, only the escrow cap is raised.
@@ -2315,7 +2317,8 @@ Rationale & sources (non-normative)
 Provenance: D-0403 (capacity-reservation sessions), D-0422 (refundable failed sessions), D-0424
 (dispute standing), D-0427 (withdrawn throughput target), D-0430 (degraded-state matrix), D-0501
 (verification, finality, unit, and claim-scope clarifications), D-0502 (capacity disposition), D-0511
-(canonical session-transcript and receipt definitions). Frame threats on
+(canonical session-transcript and receipt definitions), D-0529 (zero burn protocol-wide; the R12.1d
+penalty φ·(E−P) routes to FLOPFoundationAccount ). Frame threats on
 OWASP Agentic Top-10 (2026) + ATFAA/STRIDE + MITRE ATLAS. Controlled repeated-auction evidence finds
 that LLM bidders produce supra-competitive outcomes in small markets and return toward competition as
 bidder count grows ( Tolety 2025 ); this empirically grounds R12.3 but
@@ -2783,13 +2786,12 @@ Dispute adjudication / inclusion
 light
 censorship [GAP] V6
 The one heavy leg is DA storage/serving; no validator duty requires a GPU or TEE. A production validator
-SHOULD provision the reference profile of
-validator-miner-hardware-costs.md §2.1: 8 physical cores at
+SHOULD provision this reference profile: 8 physical cores at
 ≥3.4 GHz with SMT off, 32 GB ECC RAM, 4 TB enterprise NVMe (chain state plus DA custody under §5.3
 retention), and a 1 Gbps symmetric unmetered link — the AlephBFT-class node reference plus storage.
 Placement is a set-level concern, not a per-box one: because R2.3 counts Byzantine seats , the
-fault-domain rules in validator-set-diversity.md apply to
-production validators — one session key per machine, no shared-key failover, and no hosting ASN, metro,
+following fault-domain rules apply to production validators — one session key per machine, no
+shared-key failover, and no hosting ASN, metro,
 or operating group holding as many eligible validators as the Byzantine seats that break 3f < n
 (R2.3) for the realized committee size — 34 against a 100-seat committee — because seats never exceed
 identities. A tighter 10 % per-domain cap on identity count and on stake is proposed in D-0507
@@ -2889,7 +2891,7 @@ off-chain re-execution by the checker lane (R3.5d), never by the validator itsel
 Session stage
 Validator action
 open_channel / force_open
-author includes the tx; DA registers the ephemeral transcript DataRef
+author includes the tx; the ephemeral transcript DataRef is bound at force_settle (R1.2a, R12.1f, G.1)
 force_ack wait
 AckWindow ; miner ratifies its enclave key or the agent reclaims escrow ( expire_force_open )
 streaming turns (off-chain)
@@ -2979,7 +2981,7 @@ airdrop_vesting_duration_blocks
 7_776_000 blocks
 §8.2
 SPEC-022
-90-day linear airdrop vesting duration at 1-second block time.
+Interim pallet schedule: 90-day linear airdrop vesting at 1-second block time, governing no ratified grant tier (§8.2).
 Emission & Rewards
 Parameter
 Value
@@ -3031,7 +3033,7 @@ Blocks between block-rewards distributions (one day at 1 s blocks).
 gn_decay_factor_ppb
 1_000_000_000 ppb
 §9
-GnDecayFactor read when the key is absent: 1.0, i.e.
+GnDecayFactor read when the key is absent: 1.0, i.e. NO decay, so a period's miner leg is split purely by verified G_n (owner decision 2026-10-01, #2144).
 finality_committee_premium_weight_ppm
 1_100_000 ppm
 §9
@@ -3086,43 +3088,43 @@ miner_stake_surge_multiplier_ppm
 Provisional burst-cap stake multiplier. 1_250_000 ppm = 1.25x exposure stake while a cap is still burst/audit-ratcheted.
 calibration_min_verified_jobs
 64 jobs
-§6.1
+§7.1
 D-0433
 D-0433 minimum independently verified jobs in the quick serving-entry burst.
 calibration_min_burst_blocks
 600 blocks
-§6.1
+§7.1
 D-0433
-D-0433 minimum chain-timed serving-entry burst (10 minutes at 1s blocks).
+D-0433 minimum chain-timed serving-entry burst (10 minutes at 1s blocks). yellowpaper §7.1.
 calibration_min_utilization_ppm
 500_000 ppm
-§6.1
+§7.1
 Sustained utilization threshold for burst acceptance.
 calibration_provisional_discount_ppm
 900_000 ppm
-§6.1
-HARD-tier provisional discount applied to attested SKU ceilings before min(empirical_burst_cap, discounted_sku_ceiling).
+§7.1
+HARD-tier provisional discount applied to attested SKU ceilings before min(empirical_burst_cap, discounted_sku_ceiling). yellowpaper §7.1.
 calibration_lease_blocks
 604_800 blocks
-§6.1
+§7.2
 D-0433
 D-0433 renewable calibration-cap lease (7 days at 1s blocks).
 calibration_renewal_min_verified_jobs
 8 jobs
-§6.1
+§7.2
 D-0433
 D-0433 minimum fresh one-shot Ghost canaries for quick restart/offline/periodic cap renewal.
 calibration_renewal_max_age_blocks
 600 blocks
-§6.1
+§7.2
 Maximum miner-triggered renewal window (10 minutes at 1s blocks).
 calibration_min_recalibration_interval_blocks
 600 blocks
-§6.1
+§7.1
 Minimum interval between accepted initial calibrations (10 minutes at 1s blocks), preventing rapid cap replacement and strategic retry loops.
 calibration_max_gpu_inventory_entries
 16 distinct SKUs
-§6.1
+§7.1
 Maximum distinct attested GPU SKUs on one miner host.
 miner_capacity_stake_sim_per_10_gflop
 0.1 FLOP per 10 GFLOP/s
@@ -3287,7 +3289,7 @@ D-015
 Flat approval threshold (Byzantine 2/3) for the root / protocol-upgrade governance curve, encoded as APP_ROOT and used by the production protocol_upgrade track (GOV-A, yellowpaper §14.2).
 protocol_upgrade_support_floor
 15 percent
-§14.1
+§14.2
 D-0415
 Turnout-floor (min_support) for the production protocol_upgrade (Root) track — 50% ceiling decaying to a 15% floor (the quorum SPEC-024 lacked).
 Consensus / finality committee
@@ -3390,14 +3392,14 @@ D-0409
 Slash fraction for extended validator downtime (followed by removal). yellowpaper §13.2.
 validator_growth_numerator
 109 ratio
-§11
+§15.2
 D-0413
-Numerator of the annual compounding factor on the validator minimum-stake floor (109/100 = +9%/yr). yellowpaper §11/§15.2.
+Numerator of the annual compounding factor on the validator minimum-stake floor (109/100 = +9%/yr). yellowpaper §15.2.
 validator_growth_denominator
 100 ratio
-§11
+§15.2
 D-0413
-Denominator paired with validator_growth_numerator (109/100 = +9%/yr). yellowpaper §11/§15.2.
+Denominator paired with validator_growth_numerator (109/100 = +9%/yr). yellowpaper §15.2.
 Metering tripwire
 Parameter
 Value
@@ -3411,8 +3413,8 @@ D-0405
 Reject (never clamp) any claim whose implied gn*1000/latency_ms exceeds this; reject-only, governable, default-on. yellowpaper §4.2.
 soft_tier_spot_check_rate_ppm
 25_000 ppm
-§4.2
-SOFT-tier channel spot-check exposure surfaced with the calibration snapshot event for quality-audit pricing.
+§7.1
+SOFT-tier channel spot-check exposure surfaced with the calibration snapshot event for quality-audit pricing. yellowpaper §7.1.
 Compute-channel settlement
 Parameter
 Value
@@ -3423,7 +3425,7 @@ refund_penalty_phi_percent
 20 percent
 §12.1
 D-0422
-Static D-0422 penalty fraction phi on unused escrow for ambiguous early close; penalty routes 100% to burn/Foundation, never miner.
+Static D-0422 penalty fraction phi on unused escrow for ambiguous early close; penalty routes 100% to FLOPFoundationAccount with zero burn (R9.10), never miner.
 channel_max_settlement_turns
 1_024 count
 §12.1
@@ -3644,6 +3646,14 @@ Value
 §
 Decision
 Description
+validator_min_self_stake_ratio_percent
+20 percent
+§15.2
+Legacy minimum validator self-stake ratio when sponsored backing is enabled (§15.2).
+validator_work_recency_window_blocks
+86_400 blocks
+§15.2
+Accepted verification-duty recency window for PoUI committee eligibility (§15.2, R15.4c).
 protocol_upgrade_approval
 67 percent
 §14.2
@@ -4057,6 +4067,14 @@ circuit_breaker_flop_cap
 SessionKeysCircuitBreakerMaxSpend
 —
 —
+validator_min_self_stake_ratio_percent
+ValidatorMinSelfStakeRatio
+—
+—
+validator_work_recency_window_blocks
+ValidatorWorkRecencyWindow
+—
+—
 Derived quantities & narrative constants — structural values, formulas, and mechanism constants that are
 not part of the machine-checked numeric contract above (so they live here, not in the params file):
 Parameter
@@ -4154,11 +4172,13 @@ pair-specific; default 7,200 FLOP blocks vs 3,600 s counter duration has zero un
 The open/unset values referenced above are specified as numbered fill-in stubs in
 Appendix E — Open Specification Items .
 Appendix B — Sources
-Decision record (ratified positions, MADR + changelog):
-Decisions v0.4 — D-0401 .. D-0432 (consensus, sovereign DA, sessions, measured
+Decision records (MADR + changelog; each entry states its status):
+Decisions v0.4 — D-0401 .. D-0441 (consensus, sovereign DA, sessions, measured
 model_hash , measured G_n , validator-native attestation, governance, rotation-by-stake,
 composability, capacity-proportional miner stake, unbonding slash-lock, correlated equivocation, TOPLOC
 required, TEE-optional) + the v0.3 → v0.4 changelog.
+Decisions v0.5 — D-0501 .. D-0533 (public claim scope, wire formats,
+paid storage, validator policy, grant unlocks, reward routing, and parameter calibration).
 Research corpus (each doc carries its full citation set): the
 whitepaper/research/ directory is the long-form grounding for every section; the
 per-section Rationale & sources trailers link the docs relevant to each. Cross-cluster index:
@@ -4954,7 +4974,7 @@ verify the same receipt/turn/claim gates; compute two-part tariff P ; open chall
 receipt/turn/root/claim errors; rejects P > E with TariffExceedsEscrow (R12.1d)
 finalize(channel_id)
 anyone (signed)
-after the challenge window, pay P → miner, (1−φ)(E−P) → agent, φ(E−P) → burn/Foundation; P is in the escrow's base unit (10⁻¹⁸ FLOP), with channel_base_per_turn = rate_G = 1 base unit
+after the challenge window, pay P → miner, (1−φ)(E−P) → agent, φ(E−P) → FLOPFoundationAccount (zero burn, R12.1d); P is in the escrow's base unit (10⁻¹⁸ FLOP), with channel_base_per_turn = rate_G = 1 base unit
 window not elapsed; open dispute
 timeout(channel_id)
 anyone (signed)
@@ -5019,9 +5039,6 @@ stake-backed aggregate cap / lease renewal
 claim_vested()
 airdrop_vesting ; beneficiary (signed)
 use the finalized head; require an existing grant and positive unlocked amount above claimed ; reduce the grant freeze and emit AirdropClaimed ; errors NoGrant , NothingToClaim
-update_miner_performance(miner, mainnet_performance)
-airdrop_vesting ; Root
-require a Miner grant, a testnet baseline, and positive mainnet score; update the score and emit MinerPerformanceUpdated ; errors NoGrant , InvalidPerformanceScore
 record_attested_gpu_inventory(...) / record_hardware_fingerprint(...)
 hw_calibration
 identity binding; change invalidates
@@ -5335,8 +5352,8 @@ Terminal DA-loss settlement (R13.0c / V4)
 GAP: receipt payout in code conflicts with D-0430 full-refund rule; a missing tariff now rejects ( SettlementTariffMissing ) except for a pre-v2 legacy channel, which the migration flag converts once
 compute-channel::resolve_unrecoverable_transcript_inner , settlement_tariff_pay · #1948
 Failed/early-close three-way split ( φ )
-LIVE
-D-0422/#598
+PARTIAL: tariff P , the (1−φ)(E−P) refund and the all-or-nothing split are wired, but the runtime still burns the φ·(E−P) leg ( burn_from into TotalBurned , reported as Settled.burned ) instead of transferring it to FLOPFoundationAccount as R12.1d and R9.10 require under D-0529
+compute-channel payout_settlement · D-0422/#598 · D-0529 · #3197
 Dispute standing (agent + validators)
 LIVE
 ValidatorSet::is_active_validator · #591
@@ -5472,7 +5489,7 @@ hw_calibration
 aggregate host calibration cap + renewable lease (§7)
 88 · 91
 work_vesting · airdrop_vesting
-R_p² performance vesting (§8) · airdrop vesting (§9)
+R_p² performance vesting (§8) · airdrop vesting (§8.2)
 89
 synthetic_tasks
 Ghost Tasks — liveness + correctness canary (§8.1)

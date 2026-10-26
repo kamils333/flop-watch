@@ -47,10 +47,10 @@ The miner leg is the residual: the 10% agent/broker leg and 5% community-staker 
 The macro simulator shares the calculator's cost basis but grows network capacity from modeled demand, while the calculator starts from the competition path you pick — so the two answer slightly different questions.
 Both exclude stake opportunity cost, taxes, downtime, and execution risk, so results are stress signals rather than ROI forecasts.
 Size your own case on the Revenue model page: set the fleet, the rent-or-own basis, and the network competition path, then read the range rather than a single number.
-Stake, delegation, and slashing
+Stake and slashing
 Becoming a miner requires a 10,000 FLOP base self-stake plus a capacity exposure bond that scales linearly with the compute you are calibrated to serve. There is no cap on that term — capping it would make fraud profitable for the largest miners. The rate is still under economic reconciliation, so size a fleet against the live requirement rather than a published coefficient.
 Query the chain for the current stake requirement on your calibrated miner account before committing hardware.
-Delegation with miner commission is specified, but block rewards and session payments currently settle straight to the miner account.
+Miner stake is self-stake only: there is no delegated stake and no miner commission.
 Proven fraud can slash up to 100% of stake and blacklist the miner identity.
 Disputes and testnet conversion
 If an agent believes a task was not completed as requested, it can challenge the result and the network adjudicates. The testnet conversion model allocates the miner share of the genesis pool on verified activity rather than token holdings; the Teaser carries the pool figures.
