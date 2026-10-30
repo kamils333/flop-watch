@@ -101,7 +101,7 @@ Moving this into the realm of AI agents, the question to ask oneself is: What do
 to exist? The answer is compute. At a basic level, agents consume compute and produce
 intelligence. When we talk about compute, we mean floating-point operations per unit of time
 (FLOPs), hence the name of the network, FLOP. In order to be useful to AI agents, the FLOP
-Network is a proof-of-useful-inference (PoUI) blockchain where agents task miners to perform
+Network is a proof-of-inference (PoI) blockchain where agents task miners to perform
 inference upon request for units of the $FLOP currency. In this way, should an agent wish to,
 at any point it can convert $FLOP into compute, and create intelligence.
 This convertibility is what separates $FLOP from every rival vying for the agentic economy.
@@ -133,7 +133,7 @@ Yellow Paper . Many of the exact variables are yet to be determined but let
 this document serve as a generalised overview of what the network hopes to achieve and the
 behaviour it intends to inspire by all participants.
 02 The FLOP Network
-The network is the combination of a PoUI and an account-based send and receive blockchain.
+The network is the combination of a PoI and an account-based send and receive blockchain.
 Agents create a session request that is sent to the mempool with the following information:
 Indexer of the hash of the model weights pulled from the network's model data availability
 layer or open-source database
@@ -171,7 +171,7 @@ Every 730 days for the first five halvings
 Long run block reward
 After the fifth halving the block reward will remain constant in perpetuity, providing a permanent security budget for the network's miners and validators rather than leaving security to rest on transaction fees alone
 Once a miner completes a session request, it must prove the inference was actually performed as
-requested. This is the network's answer to the central objection to any PoUI design — that
+requested. This is the network's answer to the central objection to any PoI design — that
 verifying inference honestly is as costly as re-running it. The network stacks four layers of
 verification:
 Hardware attestation (TEE). Sessions can run on enterprise GPUs whose Trusted Execution

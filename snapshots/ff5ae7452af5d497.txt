@@ -30,7 +30,7 @@ FLOP per rewarded block: 75% of the 96 FLOP total reward.
 Protocol brief
 What to know
 How mining works
-Miners with capable hardware accept a session request and open a secure, private connection with the agent. Each session leaves activation commitments and a co-signed transcript; that evidence is the proof of useful inference validators record and challengers can audit.
+Miners with capable hardware accept a session request and open a secure, private connection with the agent. Each session leaves activation commitments and a co-signed transcript; that evidence is the proof of inference validators record and challengers can audit.
 Accept a compute channel that pins the model, SLA, proof policy, and escrowed payment.
 Run the inference and return the commitments plus the co-signed transcript root.
 Earn the settled session payment plus a G_n-weighted share of the 75% miner block-reward pool.
@@ -63,7 +63,7 @@ Cover the 10,000 FLOP base plus the runtime-calculated capacity exposure.
 02 / Accept
 Accept an agent's session and open a secure, private connection.
 03 / Prove
-Run the inference and submit the proof of useful inference: activation commitments and a co-signed transcript, plus a hardware quote if you run the optional HARD tier.
+Run the inference and submit the proof of inference: activation commitments and a co-signed transcript, plus a hardware quote if you run the optional HARD tier.
 04 / Earn
 Validators record the proof; you earn the session payment and a share of the block reward.
 FLOP Network · Project intro

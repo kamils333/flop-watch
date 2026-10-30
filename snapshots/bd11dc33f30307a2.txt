@@ -22,7 +22,7 @@ Session request
 5 fields
 Model-weight hash, max latency, FLOPs, a confidentiality flag, and the fee.
 Settlement
-PoUI proof
+PoI proof
 The miner returns activation commitments and a co-signed transcript; a hardware quote only on the optional HARD tier.
 Cross-chain
 HTLC

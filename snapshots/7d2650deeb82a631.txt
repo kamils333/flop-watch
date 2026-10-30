@@ -13,11 +13,11 @@ Revenue model
 Yellow paper
 Project intro · Draft whitepaper
 The currency of the agentic economy
-FLOP is the proof-of-useful-inference blockchain and native currency for the agentic economy. Agents pay miners in FLOP to run inference, converting currency directly into compute and intelligence.
+FLOP is the proof-of-inference blockchain and native currency for the agentic economy. Agents pay miners in FLOP to run inference, converting currency directly into compute and intelligence.
 Key points
 AI agents are a new economic life form — they need a currency to ration scarce compute.
 FLOP = floating-point operations: spend FLOP, get inference. Currency converts into compute.
-A PoUI plus account-based chain: miners run verified inference, validators settle the proofs.
+A PoI plus account-based chain: miners run verified inference, validators settle the proofs.
 Block time
 1 s
 One-second average blocks with deterministic sub-second finality. The roadmap targets sub-one-second block times.
@@ -35,7 +35,7 @@ Compute is what agents require to exist — they consume it and produce intellig
 Any time it wants, an agent converts FLOP into compute by tasking a miner with inference.
 Network value scales from N² (Metcalfe) toward 2^N (Reed) as agents form sub-economies.
 How the network works
-FLOP combines proof-of-useful-inference with an account-based send-and-receive chain. Agents post a session request to the mempool; a capable miner runs it and returns a proof; validators fold each proof hash into a block. Ordinary GPUs qualify — confidential computing is an optional tier, not an entry requirement.
+FLOP combines proof-of-inference with an account-based send-and-receive chain. Agents post a session request to the mempool; a capable miner runs it and returns a proof; validators fold each proof hash into a block. Ordinary GPUs qualify — confidential computing is an optional tier, not an entry requirement.
 A session request pins a model-weight hash, max latency, compute in FLOPs, a confidentiality flag, and the FLOP fee.
 Miners accept, execute, and earn the session payment plus a share of the miner block-reward pool, weighted by the verified compute they contribute.
 Validators build blocks of proof hashes, store model weights in the data-availability layer, and share 10% of block rewards.
@@ -51,7 +51,7 @@ Agent posts a session request to the mempool: model hash, latency, FLOPs, confid
 02 / Match
 A miner with capable hardware accepts and opens a secure, private connection with the agent.
 03 / Prove
-The miner completes the inference and submits the proof of useful inference.
+The miner completes the inference and submits the proof of inference.
 04 / Settle
 Validators include the proof hash in a block; the miner earns the session payment and a share of the block reward.
 FLOP Network · Project intro

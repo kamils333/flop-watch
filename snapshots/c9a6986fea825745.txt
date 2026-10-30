@@ -15,7 +15,7 @@ Security base · Draft whitepaper
 Validators secure the network
 A FLOP validator stakes FLOP to build blocks of inference proofs, store model weights in the data-availability layer, and govern the network. The active set shares 10% of block rewards.
 Key points
-Build blocks from miners' proofs of useful inference.
+Build blocks from miners' proofs of inference.
 Store and serve model weights in the data-availability layer.
 Govern the network by voting on FLOP Improvement Proposals.
 Validator set
