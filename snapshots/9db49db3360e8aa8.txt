@@ -120,11 +120,13 @@ F.4 Data availability (§5.3)
 F.5 TOPLOC band constants (§3.4)
 F.6 Acceptance/settlement trace
 F.7 Paid object storage (§5.4)
+F.8 FCU service and SLA claims
 Appendix G — Extrinsic Index
 G.1 Compute channel — pallet_compute_channel (sole inference-dispatch path, §12.1)
 G.2 PoI direct rail — pallet_flop_poui (synthetic/ghost/calibration/simulator, §3.6)
 G.3 Staking, calibration, vesting, DA, HTLC
 G.4 Paid object storage (§5.4)
+G.6 FCU service-policy settlement interface
 Appendix H — Conformance & Implementation-Status Matrix
 H.1 Core protocol
 H.2 Verification (§3)
@@ -284,7 +286,7 @@ Effective-FLOPs — deterministic reference-work accounting from execution input
 G_n
 F_eff / 10⁹ ; the metered/billed unit.
 FCU
-FLOP Compute Unit: the forward inference claim (§12.5); its proposed standard work denomination is 1,000,000 G_n under a versioned metering profile (E.58).
+FLOP Compute Unit: the forward inference claim (§12.5); its standard work denomination is 1,000,000 G_n under a versioned metering profile (D-0538).
 P , P_active , N , n_ctx , d
 params; active params (MoE); tokens generated; context length; hidden dim.
 G_n_max , B_p , R_p , E_c
@@ -2348,7 +2350,7 @@ reference work rather than hardware peak throughput. The standard object pairs
 purchaser-selected, provider-supported pinned model; a maximum 1,000 ms completion
 time for each eligible chunk after miner acceptance; and a default delivery start
 at 12:00 UTC on calendar day D+7 with an explicit end. These owner-selected object
-inputs and the remaining executable-profile decisions are recorded in E.58.
+inputs and the service policy below are ratified by D-0538.
 Quantity, admission capacity, service duration and accepted-chunk latency are
 separate dimensions; seven days is lead time, not the service duration or a
 synchronized settlement appointment.
@@ -2357,8 +2359,7 @@ FLOP prepayment and separate bonds, calibrated capacity/quota, liveness/availabi
 take-or-pay, partial delivery and default accounting, backup provisions, assignment,
 divisible holder units/transfers, lot/dust controls, shared draws, pull distributions,
 session verification/disputes, pause guards and a separate forward market tape.
-The standardized object composes with those obligations; its timing/remedy profile
-remain E.58. Implementation conformance is in H.5.
+The standardized object composes with those obligations and the service policy below. Implementation conformance is in H.5.
 R12.5a — Denomination and precision. An FCU MUST denote 1,000,000 integer
 G_n under its pinned metering profile. Balances MUST use integer G_n, giving
 0.000001-FCU accounting precision. Accounting precision MUST NOT set the
@@ -2397,9 +2398,10 @@ cancellation and expiry MUST permit bounded cleanup without refunding the
 original compute purchase. Whole-listing fills MUST use the exact quoted
 amount; a partially filled price requires a separately specified rounding policy.
 R12.5e — Serving obligation. Fractional ownership MUST NOT weaken the maximum
-1,000-ms completion time after miner acceptance of an eligible chunk. The remaining
-chunk, timing, acceptance and remedy profile is E.58; these ownership/payment rules
-MUST NOT authorize standardized-object activation before that profile is complete.
+1,000-ms completion time after miner acceptance of an eligible chunk. Queueing,
+batching, execution and complete output availability at the contracted provider
+delivery boundary MUST fit inside that bound. Acceptance acknowledgement receipt
+MUST NOT restart it. Client Internet latency is separate telemetry.
 R12.5f — Calendar delivery series. New standardized FCU primary offers MUST
 support the fcu_delivery_series_count future
 UTC-calendar start dates D+1 through D+14, where D is the authoritative primary-purchase
@@ -2415,8 +2417,9 @@ override cancellation, default, pause or settlement guards. New work MUST NOT be
 accepted after delivery end. A window ending MUST NOT imply financial settlement
 or extinguish claims. A target-cadence block count MUST NOT substitute for UTC evidence.
 R12.5g — Activation evidence. Standardized-object activation MUST remain
-blocked until the E.58 decisions are complete, the admitted immutable profile is
-pinned, the empirical economics are calibrated, and the physical pilot is qualified.
+blocked until the ratified service policy is implemented, the admitted immutable
+profile is pinned, the empirical economics including SLA-reserve and witness costs
+are calibrated, and the physical pilot is qualified.
 A diagnostic profile, signature, mock test or arithmetic proof MUST NOT satisfy
 physical timing qualification or establish an independent clock trust root.
 R12.5h — Pause new exposure and drain. Primary FCU financial admission MUST
@@ -2430,14 +2433,104 @@ refunds, distribution claims and bond release MUST retain their existing rules.
 Unpause MUST NOT bypass any other activation or eligibility gate. Indexed
 events MUST expose provenance and unknown history, never establish admission
 authority from missing evidence. Decision: D-0537.
+R12.5i — Immutable qualified service policy. A governance-admitted profile
+MUST pin model bytes/root, meter, precision, decode/cache policy, context,
+prefill/output limits, chunk boundaries, concurrency, ingress/delivery boundary,
+two independently operated witness identities and qualification evidence. Unknown
+profiles MUST reject new contracts. Retirement MUST stop new contracts while
+preserving sold terms; emergency safety revocation MAY pause new execution but
+MUST NOT remove settlement, refund or recovery rights. Model/meter changes
+MUST create a new hash. The pilot MUST use one in-flight chunk per reservation;
+miner-wide overlapping commitments and physical pending work across all holders,
+profiles and reservations MUST share an atomic capacity ledger. A quota/duration
+average MUST NOT substitute for qualified co-load limits.
+R12.5j — Admission and calendar authority. A complete eligible request at the
+contracted ingress MUST receive a signed accept/refuse within
+fcu_acceptance_budget_ms . Funded rights within
+the contracted concurrency and workload bounds MUST be served; proven unjustified
+refusal or a missing decision MUST retain guarded cancellation/default remedies,
+without retry rebates. Retries MUST preserve execution identity and original clocks.
+Qualification MUST bound every retained-history operation and measure the
+complete signed decision path, including reads, verification and durable writes,
+at maximum history, record size and co-load within the admission budget. A sold
+history bound MUST cover every permitted delivery, be authenticated and fixed
+before funding, and fit the serving implementation; it MUST NOT truncate
+evidence or introduce a later cutoff on sold rights.
+Default duration MUST be one UTC day; selected duration MAY be 1–30 whole days;
+the pilot MUST use one day. New request eligibility MUST end 1,100 ms before
+sold delivery end, allowing the full admission and accepted-chunk budgets. D in R12.5f
+MUST come from the finalized purchase block's validated UTC timestamp. Freshness
+MUST be based on authenticated finalized state; new admissions MUST pause when
+its conservatively bounded age exceeds
+fcu_finality_freshness_ms or UTC is ambiguous.
+A pause MUST NOT reset clocks, extend sold windows or waive liabilities.
+R12.5k — Independent timing. Both preselected witnesses MUST authenticate
+the same execution, miner-acceptance and complete-output-availability events.
+The verifier MUST assume at least one independent witness is honest and combine
+bounds by their conservative enclosing intervals, never their intersection or
+fastest observation. On-time MUST require ordered events and an upper latency
+bound at most 1,000 ms; late MUST require a lower bound greater than 1,000 ms;
+other valid bounds MUST remain inconclusive. Missing/conflicting evidence
+MUST NOT establish on-time, late or fraud. A miner signature, authenticated
+clock transport or TEE alone MUST NOT establish independent physical timing.
+R12.5l — Delivered work and separate SLA liability. Correct, available output
+with verified execution MUST consume its actual integer G_n once, including late
+or timing-inconclusive output. Without verified available output, work MUST NOT
+be debited. Each original reservation MUST have a separately funded native-FLOP
+SLA reserve R = P, where P is its original provider prepayment and Q > 0 its quota.
+All new SLA credits MUST share this reserve and cap P, independently of resale
+prices. Existing escrow, availability earnout, bond and default waterfall MUST
+remain separate and unchanged. SLA credits are additional compensation; cap P
+MUST NOT cap existing refunds or default damages. Delivered compensated work
+MUST NOT also be classified as undelivered by default settlement.
+R12.5m — Claim transitions and finalization. A claim MUST be keyed by chain,
+reservation and unique accepted execution, bind verified delivered g, immutable
+output/receipt identity and the original affected holder/draw snapshot, and admit
+at most one liability across late and evidence-failure causes. Timing proof MUST
+be due fcu_timing_proof_grace_ms after the
+contractual completion deadline. Missing or inconclusive timing at that deadline
+MUST create a provisional evidence-failure claim; proven late output MUST
+create or relabel that same claim. Timely independently verified on-time evidence
+MUST clear a provisional claim. Conflicting evidence MUST remain contested
+for existing authorized adjudication, with reserve encumbered. Ordinary provider
+or witness failure MUST NOT waive evidence liability. Challenges MUST remain
+available through the later of delivery end plus
+fcu_sla_challenge_ms and the existing dispute/DA
+cutoff. At that cutoff, an unchallenged unresolved evidence failure or late claim
+MAY become final on the authenticated finalized settlement path; a timely
+contested claim MUST await an authenticated final verdict. Ordinary final
+claims MUST NOT be reversed or clawed back.
+R12.5o — Finalized credit accounting. Let D be cumulative verified delivered G_n, F cumulative finalized compensable
+G_n, U unique provisional compensable G_n and C cumulative irreversible SLA credits.
+The ledger MUST maintain 0 <= F <= D <= Q , F + U <= D and
+C = floor(P * F / Q) <= P . Only final eligibility MUST enter F/C. Finalizing
+unique g MUST atomically remove it from U, pay the original beneficiary
+floor(P * (F + g) / Q) - C , advance F/C and mark the claim final. F/C MUST NOT
+decrease or reset on resale, pause, close or default. Canonical finalized-chain
+order MUST allocate currency atoms; total payout is partition invariant, while
+rounding can allocate a currency atom differently between beneficiaries.
+R12.5n — Transfer, closure and reserve release. Physical pending work and
+unsettled compute receipts MUST be reconciled under canonical non-rollback
+journal history, idempotent worker jobs and monotonic fences before transfer,
+close or default. Financial resale MUST NOT rotate the receipt coordinator;
+that rotation MUST remain a separately countersigned assignment. Historical
+monetary claims alone MUST NOT block resale or move their beneficiary. Reserve
+MUST NOT be released before the submission/challenge cutoff, pending execution
+and receipts reconcile, and each payable claim is paid or encumbered. After the
+cutoff with no further ordinary claims admissible, unresolved U MUST retain
+at least floor(P * (F + U) / Q) - C in reserve. Systemic pause and D-0430
+safeguards MUST retain their existing scope.
 Rationale & sources (non-normative)
-Provenance: D-0536
+Provenance: D-0538
+(owner-ratified service policy; qualification remains pending), D-0536
 (owner-adopted booking horizon and retained activation gates), D-0534
 (owner-adopted representation and payment rules), consolidated FCU proposal.
 Absolute timing refinement preserves both authenticated event intervals, rather
 than only their elapsed-time range. Disjoint completion intervals cannot be
 refinements. These arithmetic results assume valid independently authenticated
 bounds; they establish neither execution correctness nor a clock trust root.
+Positive verified work bounds the retained delivery count by quota; this storage
+bound does not establish measured admission performance.
 One FCU over one day is 1,000,000 atoms over 86,400 seconds. The predecessor
 integer-rate interface's 54-FCU exact daily lot is a limitation being removed, not
 the minimum denomination. The rate is not an additional purchaser-facing promise.
@@ -3292,6 +3385,30 @@ fcu_blocks_per_day
 §12.2
 D-0434
 D-0434 whole UTC day at the 1-second target cadence; controls forward window alignment and liveness accounting.
+fcu_acceptance_budget_ms
+100 ms
+§12.5
+D-0538
+D-0538 §12.5 ratified service policy; implementation remains default-inactive pending production, pilot and economics qualification.
+fcu_accepted_chunk_max_ms
+1_000 ms
+§12.2
+Maximum accepted-chunk completion latency, measured from miner acceptance under the sold profile.
+fcu_finality_freshness_ms
+10_000 ms
+§12.5
+D-0538
+D-0538 §12.5 ratified service policy; implementation remains default-inactive pending production, pilot and economics qualification.
+fcu_timing_proof_grace_ms
+60_000 ms
+§12.5
+D-0538
+D-0538 §12.5 timing-proof grace or minimum post-delivery challenge window; existing longer dispute/DA deadlines remain binding.
+fcu_sla_challenge_ms
+86_400_000 ms
+§12.5
+D-0538
+D-0538 §12.5 timing-proof grace or minimum post-delivery challenge window; existing longer dispute/DA deadlines remain binding.
 fcu_delivery_series_count
 14 series
 §12.2
@@ -4864,21 +4981,6 @@ lever, so per-identity credits need verifiable-demand gating. Until this ratifie
 sovereign pool accounts and are never distributed (§9.1 R9.12). Placeholder: duration-locked community
 staking pool across 7 tiers for the staker leg; the agent accounting unit and spend basis remain
 unconfirmed, with both escrow-settled and work-settled bases open. Home: §9. Blocking: #1350, #1351.
-E.58 — FCU executable object profile [RATIFY] . Fixed object inputs: 1 FCU =
-1,000,000 G_n under a pinned meter; purchaser-selected supported model; maximum
-1,000 ms completion after miner acceptance of an eligible chunk; default D+7 noon
-UTC start with an explicit end; fourteen UTC-calendar noon start dates D+1–D+14
-relative to the authoritative purchase date, independently of duration (R12.5f).
-Placeholder: versioned chunk/workload/concurrency
-bounds, acceptance/refusal budget, delivery calendar/finality mapping, independently
-verifiable timing and late-output remedy. Integer quantity accounting and staged
-ownership/atomic payment are adopted in R12.5a–d (D-0534). Holder request authorization,
-in-flight work and pending-receipt handoff remain profile integration work; financial
-resale does not itself rotate the existing receipt coordinator. Implementation evidence
-is recorded separately in H.5. A superseding decision/profile is needed before
-standardized-object activation; the economics' empirical conditions also remain.
-Home: §12.5, Appendices F–G for executable layouts/interfaces. Blocking: #3262,
-#3107/#3111; consolidated proposal.
 Appendix F — Message & Storage Formats
 Canonical on-the-wire and on-chain field layouts (normative). All hashes are 32 bytes; multi-field
 preimages concatenate ( ‖ ) fields in the order listed. SCALE is the codec for on-chain storage/extrinsic
@@ -5132,6 +5234,31 @@ atomic aggregate limits; durable or fail closed; not a debit voucher
 custody / service evidence
 reservation, object, assignment generation, provider, shard position/commitment, challenge id, interval, opening/proof, checkpoint inclusion proof, signer
 E.54 objective proof; a hash echo or provider log is insufficient
+F.8 FCU service and SLA claims
+Record
+Ordered representation
+Identity and lifetime
+FcuServiceProfile
+version:u8 ; model_hash, measured_root, decode_policy_hash, meter_profile_hash, chunk_policy_hash, timing_policy_hash, remedy_policy_hash:H256 ; precision:u8 ; min_chunk_gn, max_chunk_gn, max_context_tokens, max_output_tokens:u128 ; max_concurrency:u32 ; acceptance_budget_ms:u64
+SCALE transport; immutable identity is Blake2-256 of the UTF-8 JSON tuple ["flop-fcu-profile-v1",1,<seven lowercase fixed-width 0x hashes>,precision,<four unsigned decimal strings>,max_concurrency,<acceptance decimal string>,"1000"]
+FcuProfileQualification
+evidence_hash:H256 ; witness_keys:[[u8;32];2] ; max_delivered_entries:u64 ; pilot_qualified:bool ; economics_qualified:bool
+Immutable revision indexed by (profile_hash,evidence_hash) ; two distinct nonzero witness keys; positive retained-history bound; sold reservations retain their revision
+FcuProfileStatus
+SCALE enum Admitted=0, Retired=1, EmergencyPaused=2
+Retirement retains sold execution eligibility; emergency pause denies new execution authority without deleting monetary claims
+Inclusion UTC stamp
+(inclusion_block,utc_ms:u64)
+Written by the validated Timestamp inherent for that block; a prior block's stamp cannot supply current purchase time; serving authority authenticates the containing block through verified node BFT finality
+R12.5p — FCU executable record. An executable FCU record MUST bind chain genesis, reservation ID,
+profile hash, original Q/P/R, finalized purchase block and UTC timestamp, absolute
+UTC start/end, ingress/delivery boundary and both witness operators. A delivered
+claim MUST bind execution ID, accepted request hash, output hash, receipt root,
+verified g and immutable beneficiary/draw snapshot. State MUST distinguish
+provisional, contested, cleared and final claims; cause changes MUST NOT create
+a second execution liability. F/C, paid credits and reserve encumbrance MUST
+survive financial ownership changes. Encoding domains MUST be versioned and
+chain-bound; missing authority MUST reject, never supply a qualification default.
 Appendix G — Extrinsic Index
 The consensus-critical extrinsics an implementer builds against (normative signatures; errors/events
 abbreviated). The full on-chain operation map is On-Chain Flows.
@@ -5256,7 +5383,7 @@ model_registry
 model availability + measured root (§3.3)
 set_fcu_primary_admissions_paused(paused: bool)
 compute_channel , Root; additive call 47
-pauses only new primary exposure (R12.5h); no configuration clear or existing-claim block; FcuPrimaryAdmissionsPaused rejects primary entry points; existing indices/encodings unchanged
+pauses only new primary exposure (R12.5h); the candidate's default-false native-readiness capability rejects unpausing until native integration is complete and also guards primary dispatches against an imported false pause bit; configuration reads and existing claims remain independent; existing indices/encodings unchanged
 DA register / audit / top_up_lease / withdraw_lease(commitment)
 da_registry
 DataRef commitment; serve-or-slash audit; free lease top-up; withdraw_lease : publisher (signed); requires an existing Leased blob, matching publisher, and pin_count == 0 , with no lease_end condition; removes the blob (no further audits can be issued) and refunds the full deposit to the publisher; does not cancel an audit issued before withdrawal (E.47); errors UnknownBlob , NotLeased , NotPublisher , BlobPinned ; emits LeaseWithdrawn , LeaseDepositRefunded
@@ -5330,6 +5457,28 @@ close_service_lane(lane) / finalize_service_lane(lane)
 payer to close; any caller to finalize
 fixed boundary at close inclusion or earlier reservation end; pinned deadline = boundary + claim window; preserve slot and escrow; refund exactly remaining escrow only with known finalized height > deadline; unauthorized / claims pending / unknown clock
 ServiceLaneClosing / ServiceLaneClosed
+G.6 FCU service-policy settlement interface
+Extrinsic
+Origin
+Effect
+Key errors
+register_fcu_service_profile(profile, qualification)
+Root
+Validate the measured model/root/decode identity, pilot concurrency and admission budget; append an immutable qualification revision keyed by profile/evidence hash; identical revision is idempotent
+FcuInvalidServiceProfile ; FcuInvalidQualification ; FcuQualificationConflict
+set_fcu_service_profile_status(profile_hash, status)
+Root
+Set admitted, retired or emergency-paused status without replacing profile or qualification bytes
+FcuServiceProfileUnknown
+R12.5q — FCU settlement interface. Profile admission/retirement and emergency revocation MUST require
+the existing governance authority. Funding MUST atomically bind the sold profile,
+UTC window and miner-wide qualified capacity and lock R separately from P and bond.
+Claim submission MUST require authenticated verified execution/beneficiary data.
+Finalization MUST consume authenticated finalized eligibility and settlement order;
+claim state, F/C, reserve debit and original-beneficiary credit MUST commit atomically
+or all remain unchanged. Transfer/close/default MUST consume the canonical work,
+receipt and fence checkpoint while retaining historical monetary claims. No new
+interface MUST bypass R12.5g/h or existing dispute/DA/default guards.
 Appendix H — Conformance & Implementation-Status Matrix
 The single home for implementation status (kept out of the normative body, §0). Status legend:
 LIVE implemented · PARTIAL partly implemented · PLANNED designed, not wired · GAP
@@ -5540,8 +5689,8 @@ H.5 HTLC, invariants, sessions, governance, validators (§10–§15)
 Requirement / mechanism
 Status
 Code path · tracker
-FCU forward object (§12.5, E.58)
-PARTIAL: accounting, fractional transfers, atomic resale, funding-time snapshots, lifecycle indexing and guarded activation landed in #3310. Executable profile/admission SDK preparation and booking-horizon arithmetic are present; authenticated registry/UTC mapping into FRAME remains GAP. SDK holder coordination now reserves pending work with durable CAS and signed decisions; its production chain/workload/fence adapters remain GAP. Miner-controlled serving pause/drain, an agent request client and a local durable pilot journal are prepared; the candidate adds a separate Root-controlled, default-paused primary financial gate and reorg-safe indexed pause-event observations. Production worker and authenticated serving-authority/indexer integrations remain GAP. Conservative timing classification and pending-remedy journal handling are prepared; independent timing verifier/trust, remedy ratification and GPU qualification remain GAP. Arithmetic Lean proofs do not prove physical service or runtime refinement
+FCU forward object (§12.5, D-0538; R12.5i, R12.5j, R12.5k, R12.5l, R12.5m, R12.5n, R12.5o, R12.5p, R12.5q)
+PARTIAL: accounting, fractional transfers, atomic resale, funding-time snapshots, lifecycle indexing and guarded activation landed in #3310. Executable profile/admission SDK preparation and booking-horizon arithmetic are present; the native candidate adds immutable Root-governed profile/qualification registries and a current-block UTC stamp from the validated Timestamp inherent. Its SDK/native profile commitment shares a known-answer vector; sold revisions cannot be repriced. A default-false native-readiness capability blocks primary funding and Root unpausing while service/custody integration is incomplete, without disabling historical parameter reads or existing claims. Binding primary funding to those records and converting the complete FCU financial lifecycle to UTC remain GAP. The clock stamp is inclusion data, not BFT finality evidence: serving authority must read it from the node client’s verified BFT-finalized chain, never a reported head or tip fallback. SDK holder coordination now reserves pending work with durable CAS and signed decisions; its production chain/workload/fence adapters remain GAP. Miner-controlled serving pause/drain, an agent request client and a local durable pilot journal are prepared; the candidate adds a separate Root-controlled, default-paused primary financial gate and reorg-safe indexed pause-event observations. Production worker and authenticated serving-authority/indexer integrations remain GAP. SDK verified-delivery accounting now consumes correct available work once independently of timing and retains original-beneficiary SLA claim transitions with finalized-only credits and reserve encumbrance. The native reserve funding/payment adapter, canonical production journal/fences, independent timing trust and GPU/economics qualification remain GAP; these SDK ports are not an authoritative money boundary. SDK claim finalization also checks the authenticated prior ordinal, and miner-capacity release requires a terminal compute/receipt/fence checkpoint. Synthetic 32-seed service/economic scenarios exercise dated inventory, retries, beneficiary retention, credit caps and reserve/witness carry costs; they are not GPU or market qualification. Studio-authored native profile/UTC and synthetic-service models provide 37 sampled invariant checks plus reservation action/mutation regressions; full native funding/custody/financial-UTC composition remains GAP (see verification scope). Arithmetic Lean proofs do not prove physical service or runtime refinement
 compute-channel::{forward, traits} ; sdk/typescript/src/compute-channel/fcu-profile.ts ; sdk/typescript/src/compute-channel/fcu-serving.ts ; sdk/typescript/src/compute-channel/fcu-timing.ts ; sdk/typescript/src/compute-channel/fcu-agent.ts ; agent pilot; FlopSpecs/FcuServing.lean ; FlopSpecs/FcuEconomics.lean ; veil/FlopVeil/ForwardComputeUnit.lean ; research/fcu_object.py · #3262/#3107/#3111
 FLOP-leg HTLC create/redeem/refund; cross-chain pair profiles
 LIVE local mechanics; all implemented pair directions target-only — conformance PENDING E.48
