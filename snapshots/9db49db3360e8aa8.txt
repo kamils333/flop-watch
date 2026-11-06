@@ -102,7 +102,7 @@ Rationale & sources (non-normative)
 15.2 Onboarding (normative)
 15.3 Duties & resource intensity
 15.4 Selection — the PoI-gated committee
-15.5 Rotation & set size
+15.5 Re-selection & set size
 15.6 The validator across the session lifecycle
 15.7 Slashing & recovery
 Rationale & sources (non-normative)
@@ -394,6 +394,8 @@ Term
 Expansion / meaning
 BABE
 Blind Assignment for Blockchain Extension — the Substrate slot-based block-authoring engine
+Live seat
+an active-set seat that passes the session liveness predicate of R15.4d, read from finalized state; only live seats are drawn into the finality committee
 AlephBFT
 the asynchronous BFT atomic-broadcast finality protocol FLOP adopts (Aleph, AFT 2019)
 BFT
@@ -472,7 +474,7 @@ Stock-Keeping Unit — here, a specific attested GPU model (the HARD-tier ceilin
 EWMA
 Exponentially-Weighted Moving Average — the drift/latency baseline
 SLA
-Service-Level Agreement — session latency policy
+Service-Level Agreement — session latency policy (§12), and the per-window validator seat predicates of R15.5c
 Data availability & storage
 Term
 Expansion / meaning
@@ -538,8 +540,8 @@ Multi-Party Computation / Man-in-the-Middle / Bitcoin Pay-to-Script-Hash
 Threat-model frameworks (referenced, not defined here): OWASP Agentic Top-10, ATFAA, STRIDE, and
 MITRE ATLAS are external catalogues cited in §12.3.
 2. Consensus
-FLOP's consensus is a BFT-DAG (AlephBFT class) under the Substrate/FRAME runtime. A stake-weighted,
-PoI-gated sampler selects distinct committee identities; once selected, those identities participate as
+FLOP's consensus is a BFT-DAG (AlephBFT class) under the Substrate/FRAME runtime. A uniform,
+PoI-gated sampler over live seats selects distinct committee identities; once selected, those identities participate as
 committee seats in AlephBFT. BABE authors blocks; AlephBFT finalizes them — GRANDPA
 (Substrate's default finality gadget) is not used. BABE's one-second slot is fixed; no finality-latency
 or throughput profile is specified until E.46 is measured under a disclosed workload and topology.
@@ -555,13 +557,14 @@ strictly fewer than one third Byzantine seats: 3f < n , where f is the Byzantine
 is the realized committee size. Eligible-set or realized-committee stake fraction MUST NOT replace
 this seat bound.
 R2.4 — Committee gate. Finality-committee membership MUST be restricted to the PoI-gated set:
-stake at or above the effective minimum and a recent accepted verification duty (R15.4c;
-hp_consensus::select_committee ; §2.3, §15.4). Eligibility MUST NOT require the validator to
+stake at or above the effective minimum, a recent accepted verification duty (R15.4c), and the
+session liveness predicate (R15.4d) ( hp_consensus::select_committee ; §2.3, §15.4). Eligibility MUST NOT require the validator to
 execute inference, produce PoI proofs, or hold a GPU or TEE. A bootstrap exception or
 minimum-safe-size profile MUST be ratified before that mode can claim conformance (E.42).
-R2.5 — Committee size. The finalizing committee MUST be a stake-weighted random sample of
-finality_committee_size distinct members drawn without replacement
-from the eligible set, seeded by BABE-VRF epoch randomness (§15.4).
+R2.5 — Committee size. The finalizing committee MUST be a uniform random sample of
+finality_committee_size distinct seats drawn without replacement
+from the live eligible seats, seeded per R15.4b (§15.4). Every seat carries equal weight in the draw;
+stake MUST NOT weight it.
 R2.6 — Engine isolation. Finality-assuming pallets MUST depend only on the
 hp_consensus::FinalizedPrefix interface, so the finality engine can be swapped without touching
 them. FRAME MUST remain the sole execution/state layer.
@@ -577,9 +580,9 @@ deterministic BFT once ordered; no latency target (AlephBFT; BABE authors 1 s bl
 Byzantine tolerance
 strictly < ⅓ Byzantine committee seats ( 3f < n )
 Committee selection
-PoI-gated: stake + recent accepted verification duty ( hp_consensus::select_committee ; R15.4c)
+PoI-gated and live: stake + recent accepted verification duty + session liveness, drawn uniformly ( hp_consensus::select_committee ; R15.4a–R15.4d)
 Committee size
-finality_committee_size = 100
+finality_committee_size = 100 (200 pending E.58)
 Capacity/latency profile
 none; E.46 remains open
 The committee cap of 100 is cost-derived. At the original 1.5 FLOP floor the validator reward pool
@@ -1023,7 +1026,8 @@ storage nodes under stake. pallet_da_registry keeps only a
 DataRef = (commitment, provider_id, retention_class) plus the assigned validator subset and audit
 bookkeeping; the erasure-coded bytes (Reed–Solomon rate ½, da_shard_count
 R=6, any da_min_replication_factor k=3 reconstruct) live
-off-chain on a deterministic stake-weighted subset ( hash(commitment) → subset ). Because the
+off-chain on a deterministic subset drawn uniformly over active seats ( hash(commitment) → subset ;
+equal seats, D-0539). Because the
 publisher can influence a commitment, the assignment's anti-grinding rule, operator/failure-domain
 diversity, repair process, and cumulative retention budget remain open in
 E.47 .
@@ -1473,7 +1477,7 @@ pallet_multisig ; ≤100 signatories
 Proxy / authority delegation
 pallet_proxy ; Any / NonTransfer / Governance / Staking types
 Validator staking & authority set
-pallet_validators — the single source of truth and the SessionManager /authority source. Min stake validator_min_stake (compounds validator_growth_numerator / validator_growth_denominator = +9 %/yr) with a value-coupled floor max(baseline, k·V_booked) ; self-stake only (no delegated staking); stake-ordered rotation with a min-performance gate. There is no pallet_staking .
+pallet_validators — the single source of truth and the SessionManager /authority source. Min stake validator_min_stake (flat, D-0539) with a value-coupled floor max(baseline, k·V_booked) ; self-stake only (no delegated staking); stake-ranked per-session re-selection of equal seats gated by an objective SLA (§15.5). There is no pallet_staking .
 Miner staking
 pallet_miner_staking ; miner_unbonding_blocks unbond, min_miner_self_stake min self-stake; self-stake only (legacy commission miner_commission_cap_percent and max_delegators_per_miner deprecated)
 Operator self-stake & community staking pool
@@ -1811,17 +1815,13 @@ penalties, and dispute bonds MUST NOT accrue credit. A Miner grant's unlocked am
 min(P − S, ⌊P/4⌋ + credit) , where P is the grant's principal at creation, which never changes,
 and S is the total principal later slashed from it (R8.8); the grant has no end block, and
 principal not yet unlocked MUST stay frozen.
-A Validator grant MUST stay frozen until block
-halving_interval_blocks (63,072,000), the first block of halving
-era 1 (§9). From that block,
-Validator grants MUST be released one per 86,400 blocks (one day), each releasing its remaining
-principal P − S in full on its release block (where P is the grant's principal at creation and S is the
-total principal later slashed from it under R8.8; its unlocked amount is 0 before its release block and
-P − S from its release block onward), until every Validator grant is released; the window spans as
-many days as there are Validator grants. Until the release order is fixed
-( E.38 ), Validator grants MUST NOT be released. Releasing
-a grant lifts only its vesting freeze: it MUST NOT unbond stake, and a validator in the active set
-MUST keep at least validator_min_stake bonded (§15).
+A Validator grant MUST unlock linearly from its start block over
+validator_unlock_duration_blocks (five halving intervals);
+a genesis grant's start block is block 0. Its unlocked amount at block t is
+min(P − S, ⌊P · min(t − start, L) / L⌋) , where L is that duration, P is the grant's principal at
+creation and S is the total principal later slashed from it under R8.8. Unlocking a grant lifts only
+its vesting freeze: it MUST NOT unbond stake, and bonded self-stake MUST NOT be unbonded below
+the R15.7a bound (§15).
 Miner and Validator grants MUST NOT use a performance adjustment.
 An Agent grant MUST NOT unlock any principal at its start block, and it has no end block. It
 MUST unlock only against spend credit: one FLOP of principal for each three FLOP of its locked
@@ -1875,7 +1875,7 @@ performance-scaled curve, superseded for Miner and Validator grants by D-0517),
 locked compute spend; provenance: D-0421 (work-first
 allocation), D-0438 and D-0440 (current cohort pools), D-0514 (conversion supply, eligibility and
 scoring inputs, snapshot, and the fail-closed miner adjustment), D-0517 (the Miner quarter at genesis
-and earn-to-unlock credit, the Validator freeze to the first halving and daily release, and immobile
+and earn-to-unlock credit, the Validator freeze to the first halving and daily release — superseded by D-0539's linear unlock from genesis — and immobile
 locked Miner and Validator principal; it supersedes D-0514's miner adjustment and narrows D-0515's
 locked spend to Agent grants), D-0527 (Miner unlock credit for the grantee's minted miner-leg block
 rewards alongside its settled payouts; supersedes D-0517 item 1), D-0515 (grant landing, claims, and
@@ -1895,7 +1895,7 @@ initial_block_reward = 96 FLOP/block (fixed per-block param; halves per schedule
 Split
 miner_share_ppt = 75% miners · validator_share_ppt = 10% validators · agent_share_ppt = 10% agents · staker_share_ppt = 5% stakers (era 0: 72 · 9.6 · 9.6 · 4.8 FLOP/block)
 Validator share
-validator 10% pool, pro-rata by stake with finality_committee_premium_weight_ppm = 1.1× for current finality-committee members; liquid on issue (§9.1 R9.13)
+validator 10% pool, equal per active seat with no committee premium (§9.1 R9.5); validator_reward_bond_ppt of each share bonded and locked, the rest liquid on issue (§9.1 R9.13)
 Agent & staker legs
 10% agent leg + 5% duration-locked community staking pool (7 lock duration tiers, zero slashing risk; no operator delegation) minted to protocol-derived sovereign pool accounts; onward payout mechanics in E.40
 Labs/Foundation subsidy
@@ -1947,12 +1947,14 @@ exactly. The validator cohort is definitionally the aggregate bond —
 validator_min_stake ×
 validator_active_set_cap — so, when genesis parameters are
 chosen, a change to the bond floor moves this cohort and therefore genesis_supply (D-0440).
-R9.5 — Committee premium. The block-reward validator 10% pool
+R9.5 — Validator pool split. The block-reward validator 10% pool
 ( validator_share_ppt = 100 ppt) MUST NOT be increased by an
 emission surcharge or a second mint. (The separate 15% inference-fee validator share is an extrinsic
 settlement fee leg, not an emission or dilution of block rewards; see Appendix D ).
-It is split inside the pool with weight stake_i × (1.1 if i ∈ current finality committee else 1.0) ,
-integer dust assigned deterministically so payouts sum exactly to the pool. This holds unchanged under
+It MUST be split in equal shares among the active seats, with no stake weight and no committee
+premium, and with integer dust assigned deterministically so payouts sum exactly to the pool. A seat
+whose SLA window fails forfeits that window's share (R15.5c; the forfeiture sink is E.59). The
+validator inference-fee leg (R12.1a) MUST use the same equal per-seat split. This holds unchanged under
 the four-way split: the agent and staker legs are carved out of the miner residual
 ( miner_share_ppt 900 → 750 ppt), never added on top, so
 validator_share_ppt stays at 100 ppt.
@@ -1971,9 +1973,13 @@ miner intermediary. Onward distribution from either pool MUST NOT occur until it
 policy is ratified ( E.40 ); the pools accrue and the mint is
 evented. The two legs MUST be carved from the miner share, so the four legs sum to 1000 ppt with
 the validator pool unchanged (§9.1 R9.5).
-R9.13 — Reward liquidity. The miner and validator legs of every block reward, and the
-Labs/Foundation subsidy, MUST be liquid on issue: the protocol MUST NOT auto-compound them
-into stake, force-stake, vest, or otherwise lock them. The agent leg accrues in its sovereign pool
+R9.13 — Reward liquidity. The miner leg of every block reward and the Labs/Foundation subsidy
+MUST be liquid on issue: the protocol MUST NOT auto-compound them into stake, force-stake,
+vest, or otherwise lock them. Of each active seat's share of the validator leg,
+validator_reward_bond_ppt MUST be added to that seat's bonded
+self-stake and to its lock (R15.7a), unlocking linearly over
+validator_unlock_duration_blocks from its bonding; the
+remainder of the validator leg, and every validator fee leg, MUST be liquid on issue. The agent leg accrues in its sovereign pool
 under R9.12, and that accrual is not a lock; once its distribution policy is ratified
 ( E.40 ), every agent-leg payout MUST be liquid on payment.
 Bonding a liquid balance as stake remains the holder's choice. The staker leg's liquidity remains
@@ -2193,8 +2199,8 @@ Collusion (signing a fake G_n proof)
 slash_fraud_percent = 100% slash (to Foundation)
 eject + blacklist
 none
-Equivocation (conflicting blocks)
-correlated (Eth2-style): lone slash_equivocation_lone_percent = 50% slash (other 50% returned after 180 d), ≥⅓ correlated → 100% slash (to Foundation)
+Equivocation (conflicting BABE blocks, AlephBFT unit forks, or conflicting finality justifications)
+correlated (Eth2-style), counted in committee seats: lone slash_equivocation_lone_percent = 50% slash (other 50% returned after 180 d), ≥⅓ correlated → 100% slash (to Foundation)
 lone: eject (re-stakeable); cartel: eject + blacklist
 lone: re-stake after the 180 d return + unlock cooldown; cartel: none
 Evidence forgery
@@ -2214,7 +2220,15 @@ validator_extended_downtime_slash_percent = 5%
 kicked
 rejoin with full stake top-up
 Collusion/forgery/TEE stay flat 100% (evidence-backed fraud). Equivocation is the only correlated,
-recoverable class (a lone double-sign is most often an honest failover bug). All slashed collateral routes
+recoverable class (a lone double-sign is most often an honest failover bug); its correlated fraction is
+the offending seats over the committee seats of the session. Penalty values for the liveness rows, the
+SLA ladder that replaces them, the DA fault classes, and any reporter share are
+E.61 .
+R11.3a — Objective slashing evidence. Evidence for every row of this table MUST be objective:
+re-verifiable on-chain from signed artefacts (BABE equivocation reports, AlephBFT fork proofs,
+conflicting justifications, attested artefacts) or from finalized-state SLA records (R15.5c). It
+MUST NOT rest on a root-supplied downtime figure or score. A root path MAY remain for
+governance emergencies. All slashed collateral routes
 100% to FLOPFoundationAccount with zero burn (§9.3 R9.10). Operator stake is self-stake only (third-party
 delegated staking is prohibited); where legacy or testnet sponsored backing (E.32) is present, the loss
 order charges operator self-stake first and sponsors thereafter at the fault rate (legacy delegator
@@ -2521,6 +2535,12 @@ cutoff with no further ordinary claims admissible, unresolved U MUST retain
 at least floor(P * (F + U) / Q) - C in reserve. Systemic pause and D-0430
 safeguards MUST retain their existing scope.
 Rationale & sources (non-normative)
+The explorer candidate displays exact six-decimal FCU quantities, provider prices
+and FLOP remedy amounts. Indexed financial history retains block-hash and
+best/finalized provenance. A pause-event observation supplies no activation or
+purchase authority; qualified chain state determines eligibility. Existing records
+show their original block window. Native UTC/profile/reserve projections remain
+dependent integration work, and pilot/economics qualification is still pending.
 Provenance: D-0538
 (owner-ratified service policy; qualification remains pending), D-0536
 (owner-adopted booking horizon and retained activation gates), D-0534
@@ -2770,8 +2790,8 @@ margin composition and validator-side freeze are E.57; slash-lock covers the min
 n/a
 V12
 Committee capture / sampling bias
-BABE-VRF epoch randomness + eligible identity/weight snapshot
-implemented weighted draw; no valid aggregate-stake binomial bridge for unequal weights; E.42 requires exact/adversarial capture analysis and seed-influence bound
+uniform draw over live seats (R15.4a, R15.4d) off a seed hashed from a per-block VRF window ending before the session (R15.4b)
+exact without-replacement capture tail over equal seats ( ValidatorSetV2 ); seed-influence bound, lookahead and committee size are E.42/E.58
 n/a (open safety premise)
 13.3 Validator attestation quorum (BFT fraction)
 Active validators run DCAP/dstack off-chain and submit ValidatorAttestation bundles; the chain checks
@@ -2799,7 +2819,7 @@ Failure
 Protocol response
 F1
 Finality stall (≥⅓ committee offline)
-production continues; finality-sensitive economic deadlines freeze; max-stall escape = safe mode + AlephBFT recovery or explicit checkpoint recovery, never automatic best-block finality
+production continues; finality-sensitive economic deadlines freeze; max-stall escape = safe mode + AlephBFT recovery or explicit checkpoint recovery, never automatic best-block finality; in-band replacement of a stalled session's committee is E.60
 F2
 ≥⅓ Byzantine committee seats
 AlephBFT's safety premise is violated; agreement is no longer guaranteed; §2.3 and E.42
@@ -2952,13 +2972,15 @@ producing PoI proofs, or owning a GPU or TEE: committee eligibility is verificat
 and re-execution is a checker duty (§3.5). Validators are not miners — a validator account MAY also
 register as a miner, but miner activity confers no validator eligibility.
 15.2 Onboarding (normative)
-Registration is self-signed and permissionless above the stake floor. register freezes exactly
+Registration is self-signed and permissionless above the stake floor. register bonds at least
 effective_minimum_stake() as self-stake and places the validator in ValidatorQueue , not directly in
-ActiveValidators — promotion happens only through rotation (§15.5).
+ActiveValidators — a seat is taken only through the per-session re-selection (§15.5).
 Requirement
 Rule
 Self-stake
-≥ effective_minimum_stake() = max(MinimumValidatorStake, ValueCoupledStakeFloor) ; baseline MinimumValidatorStake starts at validator_min_stake = 1,200,000 FLOP and compounds annually in on_initialize(n) at every n > 0 with n mod 31,536,000 = 0 ( 365 × 86,400 blocks) via integer floor division ⌊old × 109 / 100⌋ ( validator_growth_numerator / validator_growth_denominator = +9%/yr), capped at 1% of current total_issuance ( min(⌊old × 109 / 100⌋, ⌊0.01 × total_issuance⌋) ); force_set_minimum_stake and set_value_coupled_floor enforce the same 1%-of- total_issuance ceiling
+≥ effective_minimum_stake() = max(MinimumValidatorStake, ValueCoupledStakeFloor) ; baseline MinimumValidatorStake = validator_min_stake = 1,200,000 FLOP, flat (R15.2a)
+Rank stake
+only bonded operator self-stake counts toward rank and the floor on production networks; D-0528 sponsored bonds keep their devnet/testnet meaning
 Self-stake ratio
 operator stake is self-stake only (third-party delegation prohibited; legacy MinSelfStakeRatio ≥ 20% applies only if E.32 sponsored backing is enabled)
 Slots per entity
@@ -2967,6 +2989,9 @@ Not blacklisted
 fraud-blacklisted accounts MUST NOT re-register
 Verification liveness (committee)
 last accepted verification duty (R15.4c; LastVerifiedWork ) within WorkRecencyWindow = 86,400 blk (24 h); else active but out of the PoI committee
+R15.2a — Flat floor. The baseline MinimumValidatorStake MUST NOT change with time. Only
+force_set_minimum_stake changes it; it and set_value_coupled_floor MUST stay within 1% of
+current total_issuance .
 Validator and miner stakes are self-stake only (§6.1); third-party delegation (legacy
 max_delegators_per_miner -class bounds and operator commission) is
 deprecated.
@@ -3018,17 +3043,22 @@ or operating group holding as many eligible validators as the Byzantine seats th
 identities. A tighter 10 % per-domain cap on identity count and on stake is proposed in D-0507
 (pending).
 15.4 Selection — the PoI-gated committee
-R15.4a. The finality committee MUST be drawn by filtering ActiveValidators to those meeting
-effective_minimum_stake() and a recent accepted verification duty (R15.4c; stake and
-verification liveness — §2.3 sub-proofs 1 & 3), then randomly sampling finality_committee_size =
-100 distinct members stake-weighted without replacement off a BABE-VRF seed
-( hp_consensus::sample_committee_weighted ). pallet_aleph snapshots this committee each session
+R15.4a. The finality committee MUST be drawn by filtering ActiveValidators to seats meeting
+effective_minimum_stake() , a recent accepted verification duty (R15.4c), and the session liveness
+predicate (R15.4d) (stake, verification liveness and session liveness — §2.3 sub-proofs 1 & 3), then
+sampling finality_committee_size = 100 distinct seats
+uniformly without replacement off the R15.4b seed; stake MUST NOT weight the draw. pallet_aleph snapshots this committee each session
 ( AlephEpochBlocks = 900 blocks; four sessions per production BABE epoch) and exposes authorities() to
 finality-aleph . The selection predicate uses the active set, stake, and recency at sampling; it
 does not assert that those inputs remain unchanged for the lifetime of the saved committee.
-R15.4b. The sampling seed MUST be BABE-VRF epoch randomness (fixed for the epoch, one epoch
-old), domain-separated per rotation. This delays and limits current-author influence; it does not by
-itself prove unbiasability. The seed-influence and repeated-draw analysis is E.42.
+R15.4b. The sampling seed MUST be the hash of the BABE per-block VRF outputs, in block order,
+of the k blocks in a window ending a lookahead δ before the session boundary, accumulated on-chain
+as those blocks are imported and domain-separated per session; if no block in the window carries a VRF
+output the runtime MUST fall back to BABE-VRF epoch randomness and emit an event. The committee is
+publicly known no earlier than δ before the boundary; an author holding every slot of the window can
+know it earlier, and an author in the window can withhold its block to re-roll, so this does not by
+itself prove unbiasability. The values of δ and k are E.58; the seed-influence and repeated-draw
+analysis is E.42.
 R15.4c — Verification liveness. A validator's recency signal ( LastVerifiedWork ) MUST be
 refreshed only by an on-chain accepted verification duty: (a) being a signer of an accepted
 validator attestation bundle (R3.6b); (b) being a signer of an accepted TOPLOC mismatch or
@@ -3042,69 +3072,81 @@ WorkRecencyWindow = 86,400 blocks. Because (a)–(d) exist only when there is tr
 MUST issue every active validator at least one challenge (e) per window from block initialization
 rather than a privileged origin, with a response deadline that falls before the validator's current
 recency lapses, so an honest validator on a quiet or fresh chain cannot age out. Gate wiring is E.52.
+R15.4d — Session liveness. A seat is live for a session's draw only if finalized state shows, for
+the previous session, an accepted session heartbeat signed with the seat's registered session key,
+and — if the seat sat in that session's committee — finality participation in that session.
+Participation MUST count when the seat appears in the signer set of a finality justification of
+that session or when it submits, within the session and a grace window after it, its own finality
+signature over a block of that session, verified on-chain against its session key. Absence from
+published justifications alone MUST NOT count as non-participation, because a justification is
+any greater-than-two-thirds subset the aggregator chooses and need not include every available
+signature. A seat that fails
+the predicate keeps its active-set seat, BABE slots and DA duties; it is only excluded from the next
+draw until it passes again.
 If the eligible pool has fewer than 100 identities, selection MUST follow the ratified minimum-safe-size
 and bootstrap profile in E.42 before claiming conformance. An N=100 capture bound does not apply to a
 smaller realized committee, and paid work alone does not establish honest consensus behavior.
-Composite performance score = 40% uptime + 30% block_rate + 20% accuracy + 10% latency
-( performance_score_weights ); it is the rotation-floor input.
-Pending ratification (v0.5 decision record): D-0508
-redefines the four components as on-chain observable signals and retires the root-origin score oracle;
+R15.4e — No score gate. The composite performance score
+( performance_score_weights ) MUST NOT gate seat allocation or
+committee eligibility; the objective SLA predicates of R15.5c replace it.
+Pending
+ratification (v0.5 decision record):
 D-0509 would align
 the 900-block committee session to the BABE epoch.
-15.5 Rotation & set size
-Rotation runs in on_initialize every
-validator_rotation_interval_blocks (~30 d) plus manual
-rotate .
-R15.5. Rotation MUST eject up to validators_to_eject = 50 from
-the bottom of the active set — bounded by
-validator_rotation_churn_percent = 10% (rounded up) and
-truncated to preserve at least
-validator_min_active_validators = 4 active seats ( deregister ,
-jail , and kick MUST likewise reject removal at or below the floor, and a proven-fault slash at the
-floor MUST confiscate stake (transferred to the Foundation per R9.10) and blacklist immediately while deferring seat removal until rotation can
-replace or shrink the set; see E.56) — and promote up to
-validators_to_promote = 50 from ValidatorQueue whose recorded
-self-stake ≥ effective_minimum_stake() . Rotation ejection removes the validator from ActiveValidators
-and thaws its self-stake freeze (the principal remains in the operator's account); re-entry goes through
-register into ValidatorQueue after ejection_cooldown_blocks
-(~7 d; configured in Config , enforcement in register pending), whereas un_jail (after
-MinJailBlocks = 3,600 for liveness jail) and rejoin (for
-extended-downtime kicks, topping up self-stake from free balance to effective_minimum_stake() ) restore
-a jailed or kicked validator directly to ActiveValidators while a slot below
-validator_active_set_cap is free. Ranking MUST be by stake
-subject to a minimum-performance floor (verification liveness per R15.4c + uptime), so padding the
-liveness signal does not improve rank (only clearing the floor remains gameable).
+15.5 Re-selection & set size
+The active set is re-selected at every committee-session boundary ( AlephEpochBlocks ); there is no
+fixed rotation interval and no forced rotation.
+R15.5 — Stake-ranked re-selection. At each session boundary the active set MUST be the
+validator_active_set_cap eligible validators with the most bonded
+self-stake (§15.2 rank stake), where eligible means bonded self-stake ≥ effective_minimum_stake() ,
+SLA passing (R15.5c), not jailed or blacklisted, and a registered Aleph session key. Ties MUST go to
+the earlier registration. A seated validator MUST keep its seat unless it is outbid, fails its SLA,
+is slashed below the floor, or exits: a candidate MUST replace the lowest-ranked incumbent only when
+its bonded self-stake is at least (1 + h) times the incumbent's, and no more than a per-session cap of
+seats MUST change hands by outbidding in one session ( h and the cap are E.59). Re-selection
+MUST preserve at least
+validator_min_active_validators = 4 active seats
+( deregister , jail , and kick MUST likewise reject removal at or below the floor, and a
+proven-fault slash at the floor MUST confiscate stake (transferred to the Foundation per R9.10) and
+blacklist immediately while deferring seat removal until re-selection can replace or shrink the set;
+see E.56).
 R15.5b. The active set MUST NOT exceed
 validator_active_set_cap = 1,000 . register admits to
-ValidatorQueue , never directly to the active set; rotation promotion from ValidatorQueue and direct
-restoration via un_jail or rejoin MUST admit to ActiveValidators only while a slot is free, so
-the cap bounds ActiveValidators and never registration. Queued validators hold stake and may do useful
-work; they are not finality-eligible until promoted.
-The current implementation attempts promotion in LIFO order within the requested budget and free
-slots; stake-ordered selection remains #1713. Underfunded candidates remain queued with their bond
-and backing intact. Promotion preserves stake and commission fields and resets performance and the
-joining epoch.
-A queued candidate has no in-place self-stake top-up: transferring more funds does not update its
-recorded bond, and rejoin applies only to extended-downtime kicks. A raised effective floor,
-including an annual baseline increase, can therefore defer promotion until the floor falls back or
-the operator replaces the registration. Operators coordinating replacement first arrange any sponsor
-unbonding (native delegation is deprecated), then deregister and register at the new minimum;
-deregistration does not enforce this backing-removal procedure. Appendix H records the missing
-top-up path.
-Set size. The active set is capped at 1,000 ; the finalizing committee is 100 (§15.4),
-sampled from the active set, so the two are separate bounds. Under D-0526 (resolving E.41 via Option (a)),
-every active validator (up to 1,000) is a BABE block authoring authority ( MAX_ACTIVE_VALIDATORS =
-MaxAuthorities = 1,000), while AlephBFT finality evaluates strictly across the 100-member PoI committee.
-Effective set size below the cap is governed by rotation throughput, the stake gate, and the runtime
-minimum-set and churn guards ( validator_min_active_validators =
-4, validator_rotation_churn_percent = 10%,
-validator_min_scored_samples = 3). How that runtime floor relates
-to the launch cohort, committee-safety premise, and skip-vs-truncate policy is E.56.
+ValidatorQueue , never directly to the active set; re-selection and direct restoration via un_jail
+MUST admit to ActiveValidators only while a seat is free or by outbidding under R15.5, so the cap
+bounds ActiveValidators and never registration. Queued validators hold stake and may do useful work;
+they are not finality-eligible until seated.
+R15.5c — Seat SLA. Seat eligibility MUST be decided per SLA window from on-chain evidence read
+from finalized state, and MUST NOT depend on a root-supplied score or downtime figure. The
+predicates are: BABE authorship against the seat's expected share of slots; finality participation
+in committee sessions the seat sat in, from justification signer sets or the seat's own submitted
+finality signatures (R15.4d); the per-session heartbeat; DA audit responses and repair obligations (R5.3b); and verification duty
+(R15.4c). A failed window MUST forfeit that window's reward share (R9.5); repeated failures MUST
+jail the seat, and extended jail MUST start its unbonding (R15.7a). Thresholds, the ladder's counts
+and lengths, the forfeiture sink, and the degraded-mode tiers that tighten exclusion and throttle new
+DA and paid-storage admission when the live set falls toward the committee size are E.59.
+R15.5d — In-place top-up. A registered or seated validator MUST be able to add bonded
+self-stake without re-registering, so that rank can be defended and a raised value-coupled floor met.
+Set size. The active set is capped at 1,000 ; the finalizing committee is 100 (§15.4), drawn
+uniformly from the live seats of the active set, so the two are separate bounds (200 pending E.58).
+Under D-0526 (resolving E.41 via Option (a)), every active validator (up to 1,000) is a BABE block
+authoring authority ( MAX_ACTIVE_VALIDATORS = MaxAuthorities = 1,000), while AlephBFT finality
+evaluates strictly across the PoI committee. Effective set size below the cap is governed by the stake
+gate, the SLA, and the runtime minimum-set guard
+( validator_min_active_validators = 4). How that runtime floor
+relates to the launch cohort, committee-safety premise, and skip-vs-truncate policy is E.56.
 Composition of the first active set at mainnet genesis (post-testnet ranking by verification liveness,
-placement declaration, 10 % per-domain cap) and the move from fixed bottom-50 ejection to a
-performance floor are proposals pending ratification:
-D-0507,
-D-0508.
+placement declaration, 10 % per-domain cap) is a proposal pending ratification:
+D-0507.
+D-0539 supersedes the rotation parameters
+( validator_rotation_interval_blocks ,
+validators_to_eject ,
+validators_to_promote ,
+validator_rotation_churn_percent ,
+validator_min_scored_samples ,
+ejection_cooldown_blocks ) and the pending proposal
+D-0508;
+they remain in the runtime until #3656 replaces do_rotate .
 15.6 The validator across the session lifecycle
 Inference streams off-chain, so ordinary validation does not re-execute every inference turn. Settlement
 still performs work proportional to submitted turns, signatures, and Merkle paths, and sampled audits add
@@ -3129,16 +3171,34 @@ no on-chain scheduler.
 15.7 Slashing & recovery
 pallet_validators is the single penalty authority (§11.3 table); all slashed collateral is transferred
 100% to FLOPFoundationAccount with zero burn (§9.3 R9.10). Fraud (Collusion / EvidenceForgery /
-TeeAttestationFailure) = 100% slash + eject + blacklist. Equivocation follows the correlated curve: a
-lone offence slashes 50%, returns the other 50% after 180 d, ejects the validator, and remains
-re-stakeable; ≥⅓ correlated equivocation slashes 100%, ejects, and blacklists. Liveness = 1% + jail;
-extended downtime = 5% + kick.
-validator_unbonding_blocks = 21 d with a slash-lock while a
-session/dispute/audit is open (D-0419); the cooldown exceeds the 14 d DA retention W , and its
-composition against the full dispute lifecycle is E.57.
+TeeAttestationFailure) = 100% slash + eject + blacklist. Equivocation follows the correlated curve,
+counted in committee seats: a lone offence slashes 50%, returns the other 50% after 180 d, ejects the
+validator, and remains re-stakeable; ≥⅓ correlated equivocation slashes 100%, ejects, and blacklists.
+Liveness = 1% + jail; extended downtime = 5% + kick (values pending E.61, evidence per R15.5c).
+R15.7a — Bond ledger. Each validator MUST carry bonded (slashable, counts for rank and the
+floor), locked ≤ bonded (the unvested Validator grant of R8.7 plus every bonded reward tranche of
+R9.13, each unlocking linearly over
+validator_unlock_duration_blocks ), and an unbonding queue.
+Unlocking MUST NOT change bonded . While seated or queued, unbond(x) MUST be refused unless
+x + max(locked, effective_minimum_stake()) ≤ bonded ; after exit only locked binds. The locked
+remainder of an exited validator MUST keep vesting on schedule and MUST stay slashable for
+offences committed while it held a seat. An implementation MAY release later than the per-tranche
+linear schedule (for example by merging tranches to the latest end) but MUST NOT release earlier.
+R15.7b — Unbonding. Validator self-stake MUST leave the bond only through
+validator_unbonding_blocks = 21 d of unbonding, measured on the
+finalized head, with a slash-lock while a session/dispute/audit is open (D-0419); deregister ,
+ejection and kick MUST start unbonding rather than thaw the bond. Unbonding balances MUST stay
+slashable. The cooldown exceeds the 14 d DA retention W , and its composition against the full
+dispute lifecycle is E.57.
+R15.7c — Slash order. A slash MUST be charged first to locked (and, within it, to the grant's
+still-frozen principal under R8.8), then to the rest of bonded , then to unbonding balances, and
+MUST NOT exceed the sum of the three.
 Rationale & sources (non-normative)
-Provenance: D-0408 (single validator-staking system), D-0413 (value-coupled floor), D-0416
-(stake-ordered rotation), D-0437 (active-set cap), D-0409 (flat fraud classes), D-0419
+Provenance: D-0539 (flat floor, stake-ranked equal seats, uniform live-seat committee, reward bond,
+linear unlock, unbonding and slash order; supersedes D-0416 rotation and the 9 %/yr growth of D-012,
+whose parameters validator_growth_numerator , validator_growth_denominator and
+finality_committee_premium_weight_ppm are deprecated pending #3655), D-0408 (single
+validator-staking system), D-0413 (value-coupled floor), D-0437 (active-set cap), D-0409 (flat fraud classes), D-0419
 (unbonding slash-lock), D-0420 (correlated equivocation), D-0501 (seat premise and cooperative-credit
 scope), D-0439 (verification liveness; CPU-class validator), D-0529 (zero-burn slash routing to
 FLOPFoundationAccount ), D-0530 (operator self-stake only). Grounding:
@@ -3151,7 +3211,10 @@ r2-payment-channel-sessions.md,
 session-work-verification-gap.md,
 prepublication-evidence.md,
 session-matching-orderbook-vs-agent-select.md.
+Adoption analysis: proposal-validator-set-equal-seats.md
+(capture vs committee size and bad-seat share, bribery bound, degraded mode, and its Lean check).
 Ops guide: docs/onboarding/validator.md . Formal:
+FlopSpecs/ValidatorSetV2.lean ,
 FlopSpecs/Sessions.lean ,
 studio-specs/reference-channel-settlement/reference_channel_settlement.qnt . Status:
 Appendix H .
@@ -3197,7 +3260,7 @@ validator_min_stake
 1_200_000 FLOP
 §9
 D-0440
-Baseline floor; compounds 9%/yr (MinimumValidatorStake).
+Baseline floor (MinimumValidatorStake); flat under D-0539, which removes the former 9%/yr growth (runtime removal #3655).
 airdrop_vesting_duration_blocks
 7_776_000 blocks
 §8.2
@@ -3257,8 +3320,9 @@ gn_decay_factor_ppb
 GnDecayFactor read when the key is absent: 1.0, i.e. NO decay, so a period's miner leg is split purely by verified G_n (owner decision 2026-10-01, #2144).
 finality_committee_premium_weight_ppm
 1_100_000 ppm
-§9
-Finality-committee validator reward weight inside the validator 10% pool.
+§9.1
+D-0539
+[DEPRECATED — D-0539] Former finality-committee reward weight inside the validator 10% pool (1.1x the base weight).
 Developer Subsidy (separate from block reward)
 Parameter
 Value
@@ -3610,8 +3674,8 @@ Notification-protocol version for AlephBFT unit gossip (/flop/aleph/N).
 finality_committee_size
 100 count
 §15.4
-D-0437
-AlephBFT finalizing committee size: randomly sampled stake-weighted without replacement from the PoI-gated active set off a BABE-VRF seed (#448/#848).
+D-0539
+AlephBFT finalizing committee size: drawn uniformly without replacement from the live, PoI-gated seats of the active set off a per-block VRF seed revealed before the session (D-0539; runtime still samples stake-weighted off the BABE epoch seed until #3656 and #3646).
 validator_attestation_threshold
 666_666_666 perbill-parts
 §3.6
@@ -3643,15 +3707,17 @@ validator_rotation_interval_blocks
 2_592_000 blocks
 §15.5
 D-0416
-Validator-set rotation cadence (~30 d at 1s); automatic on_initialize + manual rotate. yellowpaper §15.5.
+[SUPERSEDED — D-0539] Retained in the runtime until #3656 replaces do_rotate with per-session re-selection.
 validators_to_eject
 50 count
 §15.5
-Requested maximum per rotation; live ejections also require scored evidence (a blacklisted seat needs none and goes first) and respect the churn percentage and minimum active set.
+D-0539
+[SUPERSEDED — D-0539] Retained in the runtime until #3656 replaces do_rotate with per-session re-selection.
 validators_to_promote
 50 count
 §15.5
-Per-rotation promote count from the queue (stake >= current minimum). yellowpaper §15.5.
+D-0539
+[SUPERSEDED — D-0539] Retained in the runtime until #3656 replaces do_rotate with per-session re-selection.
 validator_active_set_cap
 1_000 count
 §9.3
@@ -3664,15 +3730,18 @@ Minimum active set preserved by rotation and every removal path.
 validator_rotation_churn_percent
 10 percent
 §15.5
-Maximum share of the current active set ejected in one rotation, rounded up to a whole validator.
+D-0539
+[SUPERSEDED — D-0539] Retained in the runtime until #3656 replaces do_rotate with per-session re-selection.
 validator_min_scored_samples
 3 count
 §15.5
-Performance-score updates required within one rotation interval before a validator may be ejected.
+D-0539
+[SUPERSEDED — D-0539] Retained in the runtime until #3656 replaces do_rotate with per-session re-selection.
 ejection_cooldown_blocks
 604_800 blocks
 §15.5
-Cooldown (~7 d) before a rotation-ejected validator (whose self-stake freeze was thawed on ejection) may re-register into ValidatorQueue at effective_minimum_stake; configured in Config, enforcement in register pending.
+D-0539
+[SUPERSEDED — D-0539] Retained in the runtime until #3656 replaces do_rotate with per-session re-selection.
 validator_unbonding_blocks
 1_814_400 blocks
 §13
@@ -3687,12 +3756,22 @@ validator_growth_numerator
 109 ratio
 §15.2
 D-0413
-Numerator of the annual compounding factor on the validator minimum-stake floor (109/100 = +9%/yr). yellowpaper §15.2.
+[DEPRECATED — D-0539] Numerator of the former annual compounding factor on the validator minimum-stake floor (109/100 = +9%/yr); the floor is flat under D-0539, and the runtime constant is retained pending removal in #3655. yellowpaper §15.2.
 validator_growth_denominator
 100 ratio
 §15.2
 D-0413
-Denominator paired with validator_growth_numerator (109/100 = +9%/yr). yellowpaper §15.2.
+[DEPRECATED — D-0539] Denominator paired with validator_growth_numerator (109/100 = +9%/yr); retained pending removal in #3655. yellowpaper §15.2.
+validator_reward_bond_ppt
+500 parts-per-thousand
+§9.1
+D-0539
+Share of each active seat's validator block-reward leg that is added to its bonded self-stake and to its lock (D-0539); the remainder and all fees are liquid.
+validator_unlock_duration_blocks
+315_360_000 blocks
+§8.2
+D-0539
+Linear unlock span of a Validator grant (from block 0 for the genesis grant) and of each bonded reward tranche (from its bonding): five halving intervals, 5 x halving_interval_blocks (D-0539).
 Metering tripwire
 Parameter
 Value
@@ -4208,6 +4287,14 @@ validator_growth_denominator
 ValidatorGrowthDenominator
 —
 —
+validator_reward_bond_ppt
+ValidatorRewardBondPpt
+—
+—
+validator_unlock_duration_blocks
+ValidatorUnlockDurationBlocks
+—
+—
 throughput_tripwire_gflops_per_sec
 PouiGnThroughputCeilingGflopsPerSec
 —
@@ -4571,7 +4658,7 @@ miners 75% (72) · validators 10% (9.6) · agents 10% (9.6) · stakers 5% (4.8)
 —
 Validator 10% split
 (emission)
-active validators by stake, 1.1× for finality-committee members, liquid on issue (R9.13)
+equal per active seat, no committee premium (R9.5); validator_reward_bond_ppt bonded and locked, the rest liquid (R9.13)
 —
 Agent & staker legs (10% + 5%)
 (emission)
@@ -4795,14 +4882,17 @@ Blocking: producer-to-validator wiring and cross-version resume-to-settlement te
 E.52 — Verification-liveness gate wiring [PLANNED] . R15.4c is ratified (D-0439) but the runtime
 still refreshes LastVerifiedWork from prover credit ( ValidatorWorkRecorder on OnProofVerified , with
 who = the miner) and from nothing else; no duty is protocol-issued ( issue_audit and ghost tasks are
-root-only) and no validator attestation client exists. Wire the accepted-duty writers (attestation-bundle
-signers, TOPLOC/escalation quorum signers, DA audit responses, validator dispute openings), remove the
-prover adapter, make the rotation floor read the same signal, add the per-window known-answer challenge
+root-only) and no validator attestation client exists. The #3272 source guard retains prover telemetry
+but excludes it from both committee selectors and rotation ranking; it does not supply accepted-duty
+credit or establish deployment. Wire the separate accepted-duty writers (attestation-bundle
+signers, TOPLOC/escalation quorum signers, DA audit responses, validator dispute openings), make the
+rotation floor read the duty signal, add the per-window known-answer challenge
 issuance (fixture set in runtime/genesis; da_registry::issue_audit cannot serve it — it rejects when no
 blob exists) and its parameter, and record the storage-naming choice (a rename is a storage-key change:
 decode-compat test).
-Placeholder: until wired, the committee behaves as the zero-duty bootstrap fallback of E.42 (stake-only),
-and a validator that also mines is the only one that passes the gate. Home: §2.3, §15.2–§15.5, Appendix H.
+Placeholder: until wired, the #3272 source guard keeps primary duty eligibility false and uses the
+explicit, warned zero-duty bootstrap fallback of E.42 (stake-only). Prover credit cannot end that
+bootstrap state. Source qualification and live rollout remain separate gates; Quint correspondence is user-deferred and committee trust claims remain TODO. Home: §2.3, §15.2–§15.5, Appendix H.
 Blocking: #1552 (runtime), #1554 (attestation client).
 E.53 — Re-execution checker lane [PLANNED] . R3.5d is ratified (D-0439) but the shipped TOPLOC
 checker has each validator re-run prefill ( toploc-checker.ts GPU executor; report_toploc_mismatch
@@ -4854,6 +4944,58 @@ bounds the lifecycle by W ( 14 d < 21 d ) when it starts inside retention. Defin
 the validator relies on the 21 d cooldown; no unbond-during-dispute conformance claim on the validator
 side. Home: §1.2, §13.2 V11, §15.7, Appendix I. Blocking: a decision choosing freeze (pallet change) or
 margin (value or composition), recorded as a D-id superseding D-0419's validator leg. Tracking: #1607.
+E.58 — Committee size and seed lookahead [TBD] . D-0539 targets a 200-seat committee drawn
+uniformly from live seats. At a 15 % bad-seat share (Byzantine plus offline), the yearly capture bound
+is ≤ 1.4e-9 at 200 seats and ≤ 1.31e-2 at 100 ( ValidatorSetV2 ). AlephBFT has not been shown at 200
+seats with 1 s blocks. Separately, R15.4b's lookahead δ must cover aleph-node's connection setup
+to the next committee, and its window length k sets how many consecutive authors an adversary must
+hold to know the seed early. Placeholder:
+finality_committee_size = 100, and the epoch-randomness fallback
+of R15.4b applies until δ and k are set. Home: §2.2, §15.4. Blocking: a WAN benchmark of AlephBFT round
+latency at 100, 150 and 200 seats at 1 s blocks, and a measured connection-setup time, recorded as a
+D-id. Tracking: #3646, #3656.
+E.59 — Seat SLA thresholds, re-selection margins and degraded mode [RATIFY] . R15.5 and R15.5c
+fix the mechanisms; their values are open:
+the outbid margin h and the per-session replacement cap;
+the SLA window, and the authorship, justification-signing, heartbeat, DA and verification
+thresholds;
+the failed-window count that jails a seat and the jail length;
+the extended-jail span that forces unbonding;
+the sink of forfeited reward shares;
+the degraded-mode tiers (live seats against multiples of the committee size), the
+committee-pool exclusion rules per tier, the per-seat DA and paid-storage admission quota, and the
+hysteresis for restoring quotas;
+the standby, re-proof and probation path for an excluded seat.
+Placeholder: the proposal's defaults — h = 2 %, a cap of 1 % of the cap per session, one-day
+windows, 3 failed windows of 7 to jail, 30 d extended jail, tiers at 3× the committee and at the
+committee size. No conformance claim on any value. Home: §9.1 R9.5, §15.5. Blocking: a D-id ratifying
+the values. Tracking: #3656.
+E.60 — In-band finality-stall recovery [PLANNED] . A committee that cannot finalize its session
+cannot be replaced in-band, because the next session starts only after the current one finalizes.
+Neither R15.4d's exclusion nor R15.5 re-selection can act during the stall. Candidates:
+a stall timeout, after which honest nodes abandon the session and derive an emergency committee
+from the last finalized state alone;
+a larger emergency committee.
+Either needs a session-abandonment rule that keeps two committees from finalizing conflicting blocks.
+Placeholder: safe mode at max_finality_stall , then the checkpoint runbook (§13.4 F1). Home: §13.4,
+§15.4. Blocking: a Quint model of abandonment and re-draw under asynchrony and an aleph-node design,
+recorded as a D-id.
+E.61 — Penalty calibration, DA fault classes and reporter share [RATIFY] . D-0539 requires
+objective evidence for every §11.3 row. The following values are open:
+the lone-equivocation fraction;
+the liveness rows, which the SLA ladder of R15.5c is meant to replace with reward forfeiture and
+jail, slashing only a correlated outage above a threshold under a capped curve;
+the DA fault classes and their penalties: declared shard fault, missed audit with escalation,
+missed repair, unrecoverable blob, and exit with open obligations;
+runtime-issued audits answered by an opening verifiable against the commitment, instead of a
+root-issued known answer;
+the paid-memory faults, which wait for E.54 and E.47;
+whether a share of slash proceeds rewards the submitter of objective evidence. That would amend
+D-0529.
+Placeholder: the current §11.3 values and
+da_serve_or_slash_percent , with 100 % of proceeds to
+FLOPFoundationAccount . Home: §5.3 R5.3b, §11.3, §15.7. Blocking: a D-id ratifying values and
+classes. Tracking: #3656.
 E.31 — DA-loss terminal settlement split [TBD] . Resolve whether D-0430's full-refund rule
 remains in force or a separately justified "pay last co-signed cumulative receipt, refund the
 unverifiable tail" rule supersedes it, including the evidence predicate, work-credit and forward-channel
@@ -4904,8 +5046,8 @@ rendezvous treated as untrusted transport. Home: §12, §13. Blocking: #1823.
 E.38 — Unresolved conversion and release policy [RATIFY] . §8.2 specifies the decided genesis
 allocation and airdrop path. Placeholder: ratify conversion score caps and sublinear aggregation,
 the accounting identity and owner-signed spend rules, verifiable-demand and maintained-duration gates,
-the validator cohort's activity basis, and whether activity under-counts can be appealed. Fix the
-Validator release order of R8.7; until it is fixed, no Validator grant releases. Decide the
+the validator cohort's activity basis, and whether activity under-counts can be appealed. (D-0539
+replaces the Validator release order with R8.7's linear unlock from genesis.) Decide the
 disposition of Miner and Agent principal that never unlocks. Whether a fraud verdict upheld after the
 dispute window reverses unlock or spend credit follows E.44. Residual risk: once its quarter is liquid,
 a miner can buy inference from itself through an agent it controls and unlock the rest at the 15%
@@ -5148,7 +5290,7 @@ ordered SCALE commitment:H256, provider_id:u8, retention_class
 fixed 34 B; retention tags Ephemeral=0 , Leased=1 ; unknown provider fails registry lookup and unknown retention fails SCALE decode
 provider subset
 hash(commitment) → subset of validators
-stake-weighted, deterministic
+uniform over active seats (D-0539), deterministic
 erasure coding
 Reed–Solomon rate ½: da_shard_count R=6, da_min_replication_factor k=3
 any k of R reconstruct
@@ -5499,12 +5641,12 @@ LIVE
 pallet_aleph (idx 104); finality-aleph ; 4-validator devnet
 Per-rotation VRF committee sampling
 §2.3, §15.4
-LIVE draw; ≤100 pool returns all; stake-only fallback drops recency whenever no active validator clears both the stake floor and recency (including every recent-work validator below the floor); capture/min-size proof GAP (E.42)
+DIVERGENT from D-0539: the runtime draws stake-weighted off BABE epoch randomness, while R2.5/R15.4a–b require a uniform draw over live seats off a seed hashed from a late-revealed per-block VRF window (#3656, #3646). LIVE draw; ≤100 pool returns all; stake-only fallback drops recency whenever no active validator clears both the stake floor and recency (including every recent-work validator below the floor); capture/min-size proof GAP (E.42)
 hp_consensus::sample_committee_weighted ; validators::poui_committee_sampled · #448/#848
 Verification-liveness committee gate (R2.4, R15.4c)
 §2.3, §15.4
-PLANNED: recency still written from prover credit only ( ValidatorWorkRecorder credits the submitter of a verified PoI proof); no protocol-issued duties; no attestation client (E.52). Until wired, only an account that also mines passes recency, paying the miner capacity bond and credit cap (§2.4), so the §2.3 stake-only committee cost does not yet hold
-validators::note_verified_work ; runtime ValidatorWorkRecorder · D-0439 · #1552/#1554
+PARTIAL SOURCE: #3272 excludes prover telemetry from both committee selectors and rotation ranking, retaining the warned stake-only bootstrap with primary duty eligibility false. LastVerifiedWork and its prover callback remain telemetry. Final source qualification and deployment are separate gates; Quint correspondence is explicitly user-deferred and the two committee trust claims remain TODO; no protocol-issued duties or attestation client (E.52), and E.42 remains open
+validators::active_miner_views / do_rotate ; runtime ValidatorWorkRecorder / PouiCommitteeAdapter · D-0439 · #3272/#1552/#1554
 Committee Sybil capital: self-stake vs backing
 §2.3, §15.2
 PARTIAL: D-0530 prohibits third-party delegated staking (self-stake only), while the runtime still exposes legacy delegate / sponsor_validator paths pending cleanup. The committee gate compares total_stake (self + delegated + sponsored) with effective_minimum_stake() . That backing is now distinct capital: every miner-staking and validators admission requires the account's balance to cover all of its staking positions, and one shared stake-ledger freeze holds their sum, because freezes overlap rather than add. An account that already owed more than it held before that freeze stays fully frozen but under-backed until topped up. GAP: self-stake is floor-checked at register / rejoin and from the recorded bond at queue promotion; MinSelfStakeRatio is checked only when backing is added, and a liveness slash charges self-stake first while un_jail restores without a re-check except on D-0528-enabled builds, where it restores the bonded floor like rejoin (E.42)
@@ -5668,16 +5810,19 @@ Genesis airdrop funding and grants (§8.2)
 PARTIAL (genesis bridge absent; existing grant calls mint)
 scripts/python/utils/genesis_allocator.py ; airdrop-vesting · #1175
 Airdrop claims, unlock schedule, and locked compute spend (§8.2 R8.7, R8.8)
-PARTIAL (claims use finality and locked compute spend is wired; the pallet still vests every tier linearly with the retired miner performance adjustment and update_miner_performance , and lets any tier spend locked principal; no genesis quarter, earn-to-unlock credit, or Validator freeze and daily release; no Agent spend credit or spend cap, and compute-channel refunds re-freeze up to the locked principal a channel drew and revert the close if they cannot. Miner self-stake over a still-frozen grant rides on overlapping AirdropVesting and MinerSelfStake freezes, but miner-slashing and validators lower only their own stake freeze before transferring proceeds, so a slash that reaches frozen grant principal fails today)
+PARTIAL (claims use finality and locked compute spend is wired; the pallet still vests every tier linearly with the retired miner performance adjustment and update_miner_performance , and lets any tier spend locked principal; no genesis quarter, earn-to-unlock credit, or D-0539 Validator linear unlock from genesis over validator_unlock_duration_blocks (#3654); no Agent spend credit or spend cap, and compute-channel refunds re-freeze up to the locked principal a channel drew and revert the close if they cannot. Miner self-stake over a still-frozen grant rides on overlapping AirdropVesting and MinerSelfStake freezes, but miner-slashing and validators lower only their own stake freeze before transferring proceeds, so a slash that reaches frozen grant principal fails today)
 airdrop-vesting ; agent-wallet ; compute-channel · #1175
 Ghost Tasks: encrypted issuance + known-answer correctness canary
 LIVE
 synthetic-tasks ; statistical drift-vs-cheat PLANNED
-Emission/halving/subsidy/committee premium
+Emission/halving/subsidy
 LIVE
 block-rewards , flop-subsidy · D-0436/D-0421/D-0408/D-0435
+Equal per-seat validator split, no committee premium (§9.1 R9.5)
+DIVERGENT: the runtime splits by total_stake with a 1.1× committee premium ( FINALITY_COMMITTEE_PREMIUM_WEIGHT_PPM , deprecated)
+validators::distribute_consensus_reward · D-0539 · #3655
 Reward liquidity on issue (§9.1 R9.13)
-LIVE (validator earnings and sponsored-stake payouts are liquid, like the miner leg and the Labs/Foundation subsidy; earnings do not grow stake or its freeze. The agent and staker legs accrue in pool accounts until E.40 ratifies their distribution. The +9%/year baseline, capped at 1% of issuance, and max(baseline, ValueCoupledStakeFloor) eligibility floor remain independent: unchanged stake can fall below the growing floor)
+PARTIAL (miner leg, Labs/Foundation subsidy and sponsored-stake payouts are liquid as required; the agent and staker legs accrue in pool accounts until E.40 ratifies their distribution. DIVERGENT from D-0539: the validator leg is paid 100 % liquid, with no validator_reward_bond_ppt bond or lock (#3655), and the runtime still compounds the baseline floor +9%/year, capped at 1% of issuance, so unchanged stake can fall below the growing floor and leave the committee at the first annual step (#3655))
 block-rewards → runtime ValidatorConsensusRewardSplit → validators ; flop-subsidy · #1356
 Tx-fee split (0% burn / 100% author, R9.6)
 LIVE
@@ -5741,11 +5886,14 @@ OpenGov + protocol_upgrade (Root) track; Foundation submit gate; de-sudo
 LIVE (de-sudo genesis-time)
 governance/tracks.rs ; EnsureFoundationProtocolSubmit (#592) · D-0415/D-0425
 Validator onboarding/duties/rotation
-LIVE (stake-ordering PARTIAL; runtime minimum-set guard and bounded ejection implemented; floor/bootstrap/batch policy PENDING E.56/E.42)
+DIVERGENT from D-0539 (R15.5–R15.5d): the runtime rotates every 30 d with LIFO promotion and root-fed score ejection, has no in-place top-up, and counts delegated backing toward the floor; stake-ranked per-session re-selection, objective SLA evidence and bond_extra are #3656/#3654. Runtime minimum-set guard and bounded ejection implemented; floor/bootstrap/batch policy PENDING E.56/E.42
 pallet_validators::{ensure_can_remove_from_active, do_rotate} ; tests rotation_never_drains_small_active_sets , minimum_set_guard_rejects_every_removal_before_mutation · D-0416 · #1792, #1711; containment #1727 completed
 Validator slashing table
-LIVE (correlated equivocation curve PARTIAL)
-pallet_validators::do_slash · D-0409/D-0420
+LIVE (correlated equivocation curve PARTIAL; AlephBFT fork proofs and conflicting justifications not reported on-chain; liveness evidence root-supplied, contrary to D-0539; penalty values E.61)
+pallet_validators::do_slash · D-0409/D-0420/D-0539
+Validator bond ledger, unbonding and slash order (§15.7 R15.7a–c)
+DIVERGENT: deregister and ejection thaw self-stake at once; no lock ledger, floor-guarded unbond , or slashable unbonding queue; do_slash_fraction lacks the self-stake clamp
+pallet_validators::{deregister, do_rotate, do_slash_fraction} · D-0419/D-0539 · #3654
 V6 censorship (FOCIL); V8 ghost-task accountability; O3 attestation reputation; P3 provenance; A8 account recovery
 PLANNED
 pallet-account-recovery built; wiring pending (#447 etc.)
