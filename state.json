@@ -3,11 +3,11 @@
     "flop-labs/technocore-chat": "3cd868e9a920fe61ad318d71ced1af11501b8fae",
     "flop-labs/yellowpaper": "2a2cc8218048a2933071bb2f45d75335560e39d8"
   },
-  "issues_since": "2026-11-10T09:40:04Z",
+  "issues_since": "2026-11-10T17:42:40Z",
   "pages": {
     "https://flop.finance/": {
       "lines": 26,
-      "sha": "5f54de37071b"
+      "sha": "b3305ff32965"
     },
     "https://flop.finance/intro/": {
       "lines": 59,
