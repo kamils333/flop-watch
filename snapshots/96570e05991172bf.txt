@@ -273,7 +273,7 @@ Total
 4,400,000,000 (24.3%)
 Full genesis pool
 04 Testnet and Airdrop
-FLOP Testnet is planned for Q4 2026 and runs for roughly ninety days, with mainnet to follow in
+FLOP Testnet is planned for Q4 2026 and runs for up to roughly ninety days, with mainnet to follow in
 Q1 2027. It is a full rehearsal of the network in test tokens: miners serve real inference,
 validators produce blocks and check work certificates, and agents buy compute. Participation is
 what earns the genesis airdrop; the allocations are set out in section 03.
@@ -285,9 +285,9 @@ the miner's stake but cannot otherwise be moved.
 Validators — run nodes, verify work certificates, and produce blocks. The top 1,000 on a
 combination of uptime, block production, accuracy, and latency are selected for the mainnet
 validator set. Their airdrop is the stake a validator must post: bonded at launch as slashing
-collateral rather than paid out, and locked until the first halving. From then, grants are
-released one validator per day over the following 1,000 days; a released grant still stays
-bonded while its validator is in the set.
+collateral rather than paid out, and unlocking linearly from genesis over five halving
+intervals, about ten years; an unlocked grant still stays bonded while its validator holds a
+seat.
 Agents — claim a test-token faucet and spend it on inference. Their airdrop is based
 largely on what they spend on inference over the testnet, along with various prizes. It
 arrives locked, and a locked balance can be spent only on compute; every 3 $FLOP of it spent

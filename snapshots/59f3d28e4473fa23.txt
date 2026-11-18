@@ -13,7 +13,7 @@ Revenue model
 Yellow paper
 Miner economics · testnet to first halving
 Can your compute earn its keep?
-Compare cloud rental with owned desktop and laptop hardware. Revenue runs across 730 Era-0 days; owned-device cost is amortized from the 90-day pre-mainnet testnet through the first halving.
+Compare cloud rental with owned desktop and laptop hardware. Revenue runs across 730 Era-0 days; owned-device cost is amortized from the pre-mainnet testnet, taken at its 90-day default and maximum length, through the first halving.
 The cloud rental prices this model starts from are tracked live: Rentable GPU market monitor ↗
 Era 0 730 revenue days 820-day ownership basis No surge factor
 Model How it works
@@ -28,7 +28,7 @@ Value path multiplier 1.0×
 02 Compute fleet
 Cloud devices use editable 30-day rent. Desktops and laptops use an editable purchase price converted to a 30-day cost over 820 days. Benchmark weight stays editable because accepted G n —not the device name—sets reward share; keep the preset unless you have a calibration result.
 + Add device
-Owned cost basis = purchase price × 30 ÷ 820. The 820 days are 90 pre-mainnet testnet days + 730 days to the first halving. Use an all-in system price; electricity, financing, repairs, and residual value remain excluded.
+Owned cost basis = purchase price × 30 ÷ 820. The 820 days are 90 pre-mainnet testnet days (the season's default and maximum; it may end earlier) + 730 days to the first halving. Use an all-in system price; electricity, financing, repairs, and residual value remain excluded.
 03 Network competition
 Sets your reward share: your H100-equivalents ÷ total verified network compute. It does not set the $FLOP price.
 Base case Flat
@@ -111,8 +111,8 @@ inspected period
 —
 What this computes
 An illustrative USD cash-flow scenario for rented or owned compute through the first halving. Reward revenue
-begins at mainnet and runs for 730 days. Owned-device amortization begins 90 days earlier at testnet, for an
-820-day cost basis. Periods 1–24 are 30 days; period 25 is the final 10 days. This is not a forecast.
+begins at mainnet and runs for 730 days. Owned-device amortization begins at testnet, taken at its 90-day default and maximum
+length (governance may end the season earlier), for an 820-day cost basis. Periods 1–24 are 30 days; period 25 is the final 10 days. This is not a forecast.
 The formula
 reward income(t) = Gₙ share proxy(t) × period miner emission × (network value(t) ÷ circulating supply(t))
 Gₙ share proxy(t) = your H100-equivalents ÷ network H100-equivalents(t)
@@ -197,7 +197,7 @@ The implied price divides by float, not by that total. 3.94B of the TGE supply i
 whole 1.2B agent pool (spendable only on inference; every 3 FLOP spent unlocks 1, D-0522, so it drains as
 agents buy compute: the calculator follows the workbook's base-case total drain, 40M/month through month 12,
 then 30M/month, of which three quarters is spent on compute and one quarter unlocks — a projection, since
-the protocol sets no pace), the 1.2B validator bond (frozen until the first halving), the 0.64B of reserve not yet
+the protocol sets no pace), the 1.2B validator bond (it unlocks linearly from genesis over about ten years, but unlocking never unbonds, so it stays bonded while seated), the 0.64B of reserve not yet
 distributed (80M per half-year season), and 0.90B of the miner airdrop. The miner airdrop unlocks
 against what the airdropped miners earn : one FLOP for every FLOP of block rewards they receive from
 the miner pool (D-0527) and of their payout from settled sessions, counted once the 7-day dispute window
@@ -228,7 +228,7 @@ Session throughput H100 80GB PCIe baseline, gpt-oss-120b at MXFP4: 1,110 output 
 Session pricing $0.20 per 1M output tokens, $0.04 per 1M input tokens — market averages, not a protocol tariff
 Era-0 emission (96 reward + 16 subsidy) × 86,400 × 30 = 290,304,000 FLOP/month; the subsidy halves with the reward and ends after five eras (D-0436)
 First halving 63,072,000 blocks, approximately day 730
-Owned-device cost basis 90 pre-mainnet testnet days + 730 Era-0 days = 820 days; no residual value
+Owned-device cost basis 90 pre-mainnet testnet days (the season's default and maximum; it may be shorter) + 730 Era-0 days = 820 days; no residual value
 Share proxy H100-equivalent share approximates G n only under equal verified utilization and quality
 Miner airdrop unlock 900,000,000 locked at TGE; unlocks 1 FLOP per FLOP the testnet cohort earns (1,000 H100-eq, share 1,000 ÷ network units): its miner-pool block rewards on payment (D-0527) and its inference payout 7 days after settlement (D-0517)
 Price and liquidity Network value is user-supplied; the agent and reserve release paths are modeled linearly and the miner airdrop unlocks with the cohort's earnings; sell pressure, slippage, and lockup nuances are omitted

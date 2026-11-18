@@ -26,7 +26,7 @@ Block reward
 Halves every 730 days for five halvings — 96 to 48 to 24 to 12 to 6 to 3 — then stays constant at 3 FLOP in perpetuity.
 Validator set
 1,000
-Capped in the spec; roughly 50 rotate each month on verification liveness and uptime. Planned: rank by stake above that floor.
+Capped in the spec: the top 1,000 by bonded stake among validators passing an on-chain service-level check, one equal seat each, with no forced rotation. Ratified; not yet live in the runtime.
 Protocol brief
 What to know
 Why agents need FLOP

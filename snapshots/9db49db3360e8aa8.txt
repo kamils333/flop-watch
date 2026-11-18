@@ -136,7 +136,7 @@ H.5 HTLC, invariants, sessions, governance, validators (§10–§15)
 Appendix I — Runtime Composition
 Version 0.5.0 (draft)
 Status Implementation spec — iterating
-Updated 2026-09-24
+Updated 2026-11-18
 The implementation specification of the FLOP Network: notation, message and storage formats,
 extrinsic interfaces, state machines, algorithms, and protocol invariants. This is the authoritative
 reference an implementer builds against. It is the math/spec companion to the
@@ -153,8 +153,9 @@ Unresolved values/mechanisms are numbered stubs in
 Appendix E — Open Specification Items ; the body references a
 stub rather than restating an open debate.
 Decision provenance. Ratified positions are recorded once in
-decisions/v0.4.md ( D-04xx , MADR-shaped, immutable once merged, superseded by
-ID in later versions). Where a normative rule cites a D-id , the citation is provenance only — the
+decisions/v0.4.md ( D-0401 .. D-0441 ) and
+decisions/v0.5.md ( D-0501 .. D-0547 ); entries are immutable once merged and
+superseded by ID. Where a normative rule cites a D-id , the citation is provenance only — the
 rule itself is stated in full in the body; the reader never needs the decision record to implement.
 0. Conformance & Reading Guide
 Normative keywords. The keywords MUST , MUST NOT , REQUIRED , SHALL , SHALL NOT ,
@@ -265,7 +266,7 @@ Definition
 Node
 The software process ( relay-node / zkv-service + role services). Not a role: both validators and miners run nodes.
 Validator
-Staked consensus role: authors blocks (BABE), runs BFT finality on the sampled committee (§2), stores and serves DA shards under serve-or-slash (§5), and attests miners' proofs (§3.6) and checker verdicts (§3.5). Requires no GPU or TEE and never executes inference (§15.1). Earns the validator block-reward share. Minimum self-stake per Appendix A ( validator_min_stake , compounding; value-coupled floor max(baseline, k·V_booked) ).
+Staked consensus role: authors blocks (BABE), runs BFT finality on the sampled committee (§2), stores and serves DA shards under serve-or-slash (§5), and attests miners' proofs (§3.6) and checker verdicts (§3.5). Requires no GPU or TEE and never executes inference (§15.1). Earns the validator block-reward share. Minimum self-stake per Appendix A ( validator_min_stake , flat; value-coupled floor max(baseline, k·V_booked) ).
 Miner (compute provider)
 Staked compute role: executes inference and earns session-settlement revenue plus work-gated rewards (§4, §8). Minimum self-stake min_miner_self_stake plus a capacity-proportional term (§6.1). Nothing is "mined"; the name is colloquial.
 Agent
@@ -324,7 +325,7 @@ a finality stall MUST freeze economic deadlines by construction (§13 F1); opera
 BABE epoch / committee session
 epoch 1 h prod ( EpochDurationInBlocks ; 1 min fast-dev); committee session 900 blocks in every build ( AlephEpochBlocks , ~15 min; four per epoch in production, one per 15 epochs in fast-dev)
 BABE randomness epoch; pallet_aleph re-snapshots the PoI-gated finality committee each session
-900-block sessions give 35,040 draws/yr; in production the four sessions of an epoch are all drawn from that epoch's randomness (R15.4b); couples the committee-capture bound to eligible-set concentration (§15)
+900-block sessions give 35,040 draws/yr, each seeded from its late-revealed per-block VRF window (R15.4b), with an explicit epoch-randomness fallback for an empty window; couples the committee-capture bound to eligible-set concentration (§15)
 Agent daily cap window
 86,400 blocks ( agent_cap_window_blocks ; 24 h at uninterrupted 1 s target cadence)
 per-wallet and per-session spend budgets
@@ -405,7 +406,7 @@ Directed Acyclic Graph — the unit graph a committee orders
 BFT-DAG
 a DAG ordered by a Byzantine-agreement protocol (deterministic finality)
 VRF
-Verifiable Random Function — the BABE epoch randomness seeding committee sampling
+Verifiable Random Function — BABE per-block outputs seed committee sampling; epoch randomness is the empty-window fallback
 FRAME
 Substrate's runtime framework (the pallet/runtime programming model); the execution/state layer
 WASM
@@ -618,11 +619,12 @@ gated by the tiered verification stack (§3). Subject to actual enforcement of t
 verification bridge (E.42–E.44, E.52), this constrains stake-only eligibility and unverified reward
 credit. It does not prove honest consensus behavior.
 The probabilistic bridge from eligible-set composition to the realized seat premise is unresolved
-( E.42 ). In particular, weighted sampling of distinct identities
-with unequal stake is not binomial sampling by aggregate attacker stake. SelectionTailDominated in the
-Lean model is an explicit hypothesis, not a theorem about the implemented sampler. Capture analysis must
-model the actual eligible identities, their weights, the without-replacement draw, stake splitting, small
-eligible pools, repeated epochs, and BABE-VRF seed influence.
+( E.42 ). R15.4a specifies a uniform without-replacement draw over
+equal live seats, so stake does not weight a seat's selection probability; capture is then governed by
+the number of Byzantine seats in the live set, not by aggregate attacker stake. SelectionTailDominated
+in the Lean model is an explicit hypothesis, not a theorem about any deployed sampler. Capture analysis
+must model the actual eligible identities, the without-replacement draw, identity splitting, small
+eligible pools, repeated epochs, and seed influence.
 2.4 Sybil model — miner and checker identities
 For miners, and for calibrated miner identities serving as checkers, eligibility is gated by
 stake + attested hardware (not hashpower). A Sybil is many identities seeking extra reward,
@@ -776,7 +778,9 @@ R3.2c — DA backup. The Leased DA copy of a content-v1 model MUST comprise the 
 named by ModelWeightsRef , and a file-table blob ( Appendix F.1 )
 that names the image's DA commitment; the model's DA mirror MUST name the table. Approval MUST
 require the table blob to be Leased , its lease to end no earlier than the image's, and its contents to
-hash to model_hash and name the ModelWeightsRef commitment. A loader MUST refuse a table whose
+hash to model_hash and name the ModelWeightsRef commitment. The publisher MUST bind
+ModelWeightsRef while the model is Pending ; once it leaves Pending the chain MUST reject any
+binding other than a replay of the bound reference. A loader MUST refuse a table whose
 content-v1 root differs from model_hash before fetching the image, and MUST re-hash every file it
 cuts from the image.
 R3.2d — TEE measurement. When a TEE session claims a model, the miner CVM MUST extend the
@@ -901,7 +905,8 @@ dispute-reexecution-tradeoffs.md,
 formal-to-implementation-bridge.md. Band derivation:
 toploc-band-derivation.md; operational R1–R4:
 toploc-r1-r4-research.md; decode-side conformance gap against
-R3.4c: decode-substitution-gap.md. Tier-3 primitives:
+R3.4c: decode-substitution-gap.md. Long-generation audit
+granularity: turn-audit-granularity.md. Tier-3 primitives:
 freivalds-bisection-spec.md,
 commodity-reexecution-reference.md (tinygrad + Colibri as candidate GPU-optional leaf re-executors),
 distribution-audit-tier-design.md,
@@ -1488,12 +1493,20 @@ Declarative spend-condition layer
 Miniscript/Simplicity-style bounded predicates (sig · hash · timelock · threshold) on the account model — opcode-like composability, no UTXO script engine (§6.4)
 Capacity-proportional miner self-stake (normative). Required miner self-stake MUST be linear in
 calibrated throughput with no cap (a cap makes the largest miners' inflation fraud +EV):
-required_self_stake(B_p) = min_miner_self_stake + miner_capacity_stake_per_gflop · B_p
-with min_miner_self_stake = 10,000 FLOP and
-miner_capacity_stake_per_gflop = 0.01 FLOP/(G_n/s). The
-coefficient guards emission-inflation fraud: the realized extra reward over the dispute window W for a
-miner claiming X·B_p is r·(X−1)·B_p·W (linear in B_p ), so a constant k tracks the security floor
-k_min(EV) = ((1−p)/p)·(X−1)·P·W / B_total . The onboarding form of this bound is Appendix C.1.
+exposure(B_p) = floor(B_p · L · σ_ppm / 10⁶) [G_n]
+required_self_stake(B_p) = min_miner_self_stake + miner_capacity_stake_per_gflop · exposure(B_p)
+where B_p is the calibrated cap in G_n/s , L =
+miner_stake_revocation_latency_blocks = 604,800 and
+σ_ppm = miner_stake_surge_multiplier_ppm = 1,250,000, so
+each G_n/s of cap carries 756,000 G_n of exposure.
+min_miner_self_stake = 10,000 FLOP, and
+miner_capacity_stake_per_gflop = VFY / 30,240,000 FLOP per
+G_n of exposure, floored to 33,068,783,068 base units. Worked example: one H100 at 400,000 G_n/s
+needs 10,000 + 400,000 · 756,000 / 30,240,000 ≈ 20,000 FLOP, about 0.025 FLOP per G_n/s of cap above
+the base. The coefficient guards emission-inflation fraud: the realized extra reward over the dispute
+window W for a miner claiming X·B_p is r·(X−1)·B_p·W (linear in B_p ), so a constant per- G_n/s
+coefficient tracks the security floor k_min(EV) = ((1−p)/p)·(X−1)·P·W / B_total . The onboarding form
+of this bound is Appendix C.1.
 R6.1a — Sponsored registration bonds. A sponsor MAY post the whole registration bond of a miner
 or validator and later top it up (Appendix G.3). The sponsored principal MUST stay owned by, and
 frozen in, the sponsor account: the operator MUST NOT be able to transfer it, pay fees with it, place
@@ -1633,7 +1646,8 @@ Rationale & sources (non-normative)
 Provenance: D-0513 (SS58 prefix 42 on every network; networks told apart by genesis hash, R6.5a),
 D-0408 (single validator-staking system), D-0413 (value-coupled stake floor), D-0416
 (stake-ordered rotation), D-0417 (declarative spend-condition layer, UTXO not adopted), D-0418
-(capacity-proportional miner stake, provisional pending sim calibration), D-0403 (sessions as the
+(capacity-proportional miner stake), D-0541 (capacity-stake rate anchored at 400,000 G_n/s per
+H100; formula unchanged), D-0403 (sessions as the
 escrow primitive's first instance), D-0530 (operator self-stake only; deprecation of delegation and
 commissions; 5% duration-locked community staking pool). Grounding:
 agent-composition-primitives.md,
@@ -1690,6 +1704,34 @@ R7.1b. An attested inventory with any missing governed SKU ceiling MUST fail clo
 downgrade to SOFT. Inventory entries MUST be canonicalized by SKU.
 R7.1c. Calibration is per miner host. C_emp includes all attached GPUs and production batching/concurrency
 once; it MUST NOT be multiplied by GPU count, channel count, session count, or batch size.
+R7.1d. A SOFT effective cap MUST NOT exceed
+calibration_max_soft_cap_gn_per_sec , which MUST stay
+below the direct PoI per-proof work floor. Acceptance and renewal apply it. Stored SOFT caps above it are
+lowered once when it is introduced; this is the only exception to R7.2's frozen lease.
+R7.1e. Concurrent channels MUST share their miner's cap. A channel MUST reserve a positive rate
+when it becomes open, and the open MUST fail closed unless the miner's unlapsed reservations plus that
+rate are at most the miner's current cap. Every settlement path MUST bound the channel's work by
+min(reserved rate, current cap) × session_blocks . A reservation lapses at the end of the channel's
+execution window or on the block after its terminal close, whichever is earlier. The rate is the miner's
+declared per-channel rate, else its whole current cap; a declared rate MUST NOT be reduced to fit. The
+named miner MAY release an open channel's reservation, which sets that channel's allowance to zero.
+An initial acceptance or renewal MUST be rejected if its cap is below both the miner's live
+reservations and the cap it already holds. The bound is on settled allowance integrated over each
+channel's reserved window, not on concurrent physical work: a channel MAY settle after its
+reservation lapsed, within the allowance of the window it reserved.
+Channels admitted before this rule keep their admitted allowance and reserve their unchanged snapshot
+rate until their windows lapse. A forward channel's contracted delivery rate MUST fit its reserved
+rate.
+R7.1f. An open the miner has not signed (a bare open_channel ) MUST reject an SLA window above
+channel_max_unconsented_session_blocks and MUST escrow
+at least reserved rate × max(window, 1) ×
+channel_unconsented_reservation_tariff , rejecting
+arithmetic overflow. Miner-signed offers, acknowledged permissionless opens and cleared forward bids are
+exempt. The tariff is floor(miner_capacity_stake_per_gflop × miner_stake_surge_multiplier_ppm / 10⁶) ,
+parity with the miner's per- G_n capacity stake (D-0544). The escrow is a minimum capacity payment, not
+refundable collateral: a cooperative settle pays all of it to the miner, and a unilateral close withholds
+refund_penalty_phi_percent of the unused part from the agent's refund. An open channel that reaches its
+deadline unsettled is refunded in full by timeout .
 The SOFT tier is the non-TEE path (§3.2, R3.2); its end-to-end settlement/dispute policy is E.33.
 7.2 Renewable cap
 R7.2. An accepted cap is a lease of
@@ -1735,7 +1777,7 @@ the attested ceiling. Latency adjustment: Adjusted_G_n = G_n · clamp(target/act
 (tracked; reward weighting is E.22).
 Rationale & sources (non-normative)
 Provenance: D-0405 (measured G_n ), D-0418 (capacity stake), D-0433 (quick entry,
-renewable cap, lifecycle revalidation). Runtime alignment:
+renewable cap, lifecycle revalidation), D-0542 (per-miner reservations, SOFT ceiling), D-0543 (bounded unsigned opens, non-shrinking renewals), D-0544 (unsigned-open tariff at capacity-stake parity). Runtime alignment:
 hw-calibration::{accept_benchmark_burst,effective_cap,discounted_cap,renew_benchmark_cap}
 uses the empirical cap for the initial work gate and the tier-dependent effective cap for bonding and
 renewal. At the governed floors, 64 jobs × 1,000 G over 600 blocks admit at most C_emp = 213 ; required work
@@ -1746,7 +1788,7 @@ literature: arXiv:2502.12340, arXiv:2605.04213, arXiv:2604.10390. Formal:
 FlopSpecs/CalibrationFastPath.lean ,
 FlopSpecs/CalibrationDrift.lean ,
 FlopSpecs/Calibration.lean . Open: E.22
-(statistical degradation, cache-aware metering, aggregate multi-channel reservation, MLPerf data).
+(statistical degradation, cache-aware metering, MLPerf data).
 Status: Appendix H .
 8. Performance-Locked Vesting
 R_p ≔ min(G_n_actual / B_p, 1) ∈ [0, 1]
@@ -1794,6 +1836,16 @@ lock. The snapshot MUST identify each account's cohort, activity, fraud flag, an
 the published allocation MUST bind the inputs used to filter and score each account. The finalized
 Era-T chain state, allocation file, conversion-parameters file, and their hashes MUST form the
 evidence of record.
+R8.5a — Season length. The Era-T season length is the testnet configuration value
+era_t_season_blocks , whose default is also its maximum; governance
+MAY ratify an earlier snapshot height, so a season can be shorter. The three conversion pools of
+R8.3 MUST NOT scale with the season length: each cohort's pool is fixed and is allocated over
+the cohort's eligible activity in the actual season under R8.4 and the scoring and aggregation rule
+that E.38 leaves open. The season length MUST NOT
+change a pool's size or the cohort boundaries. Reaching the season
+end MUST NOT by itself authorize a payout: conversion still MUST use the governance-ratified,
+finalized snapshot of R8.5 within the configured window, and only eligible activity through that
+height MUST count. A shorter season MUST NOT move any unallocated remainder between cohorts.
 R8.6 — Grant landing. An Era-0 airdrop allocation MUST enter as a funded genesis balance frozen by a
 pallet_airdrop_vesting grant; creating the grant MUST NOT mint the same allocation again. The
 grant tier MUST be Miner, Validator, or Agent, matching the account's allocation cohort.
@@ -1874,7 +1926,8 @@ SPEC-022 (the pallet's linear,
 performance-scaled curve, superseded for Miner and Validator grants by D-0517),
 locked compute spend; provenance: D-0421 (work-first
 allocation), D-0438 and D-0440 (current cohort pools), D-0514 (conversion supply, eligibility and
-scoring inputs, snapshot, and the fail-closed miner adjustment), D-0517 (the Miner quarter at genesis
+scoring inputs, snapshot, and the fail-closed miner adjustment), D-0547 (configurable Era-T season
+length with fixed conversion pools; amends D-0514's snapshot window), D-0517 (the Miner quarter at genesis
 and earn-to-unlock credit, the Validator freeze to the first halving and daily release — superseded by D-0539's linear unlock from genesis — and immobile
 locked Miner and Validator principal; it supersedes D-0514's miner adjustment and narrows D-0515's
 locked spend to Agent grants), D-0527 (Miner unlock credit for the grantee's minted miner-leg block
@@ -1895,7 +1948,7 @@ initial_block_reward = 96 FLOP/block (fixed per-block param; halves per schedule
 Split
 miner_share_ppt = 75% miners · validator_share_ppt = 10% validators · agent_share_ppt = 10% agents · staker_share_ppt = 5% stakers (era 0: 72 · 9.6 · 9.6 · 4.8 FLOP/block)
 Validator share
-validator 10% pool, equal per active seat with no committee premium (§9.1 R9.5); validator_reward_bond_ppt of each share bonded and locked, the rest liquid on issue (§9.1 R9.13)
+validator 10% pool, equal per active seat with no committee premium (§9.1 R9.5); validator_reward_bond_ppt = 500 ppt: 50% of each share bonded and locked, 50% liquid on issue, all fee legs liquid (§9.1 R9.13)
 Agent & staker legs
 10% agent leg + 5% duration-locked community staking pool (7 lock duration tiers, zero slashing risk; no operator delegation) minted to protocol-derived sovereign pool accounts; onward payout mechanics in E.40
 Labs/Foundation subsidy
@@ -1952,9 +2005,12 @@ R9.5 — Validator pool split. The block-reward validator 10% pool
 emission surcharge or a second mint. (The separate 15% inference-fee validator share is an extrinsic
 settlement fee leg, not an emission or dilution of block rewards; see Appendix D ).
 It MUST be split in equal shares among the active seats, with no stake weight and no committee
-premium, and with integer dust assigned deterministically so payouts sum exactly to the pool. A seat
+premium (stake above the floor affects only selection for seats under R15.5, never the reward share), and with integer dust assigned deterministically so payouts sum exactly to the pool. A seat
 whose SLA window fails forfeits that window's share (R15.5c; the forfeiture sink is E.59). The
-validator inference-fee leg (R12.1a) MUST use the same equal per-seat split. This holds unchanged under
+validator inference-fee leg (R12.1a) MUST use the same equal per-seat allocation. For D-0545
+profile-1 channels, cumulative fractional credits replace per-award integer rounding; shared
+remainders are reserved at membership/backing boundaries, never assigned to newcomers.
+This holds unchanged under
 the four-way split: the agent and staker legs are carved out of the miner residual
 ( miner_share_ppt 900 → 750 ppt), never added on top, so
 validator_share_ppt stays at 100 ppt.
@@ -1979,7 +2035,14 @@ vest, or otherwise lock them. Of each active seat's share of the validator leg,
 validator_reward_bond_ppt MUST be added to that seat's bonded
 self-stake and to its lock (R15.7a), unlocking linearly over
 validator_unlock_duration_blocks from its bonding; the
-remainder of the validator leg, and every validator fee leg, MUST be liquid on issue. The agent leg accrues in its sovereign pool
+remainder of the validator leg, and every validator fee leg, MUST be liquid on issue. At 500 ppt
+this is 50% bonded and locked and 50% liquid; unlocking a tranche MUST NOT unbond it. Because each
+bonded tranche unlocks from its own bonding, a continuously seated validator holds a rolling locked
+balance by design.
+D-0545 profile-1 inference fees implement liquidity as fully funded, immediately claimable
+credits: earned credits and beneficiary fractions never expire, no staking lock applies,
+and the claimant pays the normal withdrawal transaction fee. Existing channel terms remain
+unchanged. The agent leg accrues in its sovereign pool
 under R9.12, and that accrual is not a lock; once its distribution policy is ratified
 ( E.40 ), every agent-leg payout MUST be liquid on payment.
 Bonding a liquid balance as stake remains the holder's choice. The staker leg's liquidity remains
@@ -2018,7 +2081,7 @@ SS58 prefix SS58Prefix = 42, the generic Substrate prefix, identical on every FL
 1 s block time; existential deposit 0.01 FLOP.
 R9.9 — Initial authorities. The genesis chain spec MUST seed the initial validator set and its
 session keys (BABE + AlephBFT), bootstrapping the §2 finality committee. Post-genesis, ActiveValidators
-admits validators only through §15 rotation promotion from ValidatorQueue and through un_jail /
+admits validators only through §15 per-session re-selection (R15.5) and through un_jail /
 rejoin restoration of jailed or extended-downtime-kicked validators within
 validator_active_set_cap (§15.5, §15.7).
 R9.10 — Protocol sovereign accounts. The FLOP Foundation and FLOP Labs accounts are
@@ -2268,7 +2331,20 @@ and inference_fee_validator_share_ppt = 15% to the
 validator pool (D-0525). The 1% audit pool earmark
 ( audit_fee_split_ppm = 10,000 ppm) MUST be deducted from the 15%
 validator share to fund verification audits; the remainder of the validator leg is distributed
-intra-pool by the R9.5 weighting, liquid on issue (R9.13, D-0518).
+intra-pool by the R9.5 weighting. For the prospective D-0545 profile 1, the exact integer split is
+validatorGross = floor(payable × 150 / 1000) , audit = floor(payable × 10000 / 1000000) ,
+standard = validatorGross - audit , and miner = payable - validatorGross .
+The standard share MUST atomically fund the dedicated validator/sponsor credit account;
+it MUST NOT mint tokens or use its independently funded existential-deposit seed.
+Global equal-seat and per-seat backing indices preserve earned beneficiary fractions and
+sponsor ownership; shared remainders are reserved at cohort boundaries (D-0545, R9.13).
+This split applies on every profile-1 inference-payment exit, including transcript DA loss,
+without changing that exit's refund or penalty policy. Missing/0 channel profiles retain
+their exact historical exits, including the legacy DA-loss gross miner payment.
+New offer signatures MUST bind profile 1 after activation. Unknown profiles and a
+non-ready activated ledger MUST fail closed; a fault cannot restore legacy admission.
+Activation requires an empty funded forward book, and new forward admissions remain closed
+under this spot-only profile. Existing forward exits are preserved.
 R12.1b — Transcript. The enclave (or, on the SOFT path, the miner session key) MUST sign each
 turn's 32 B transcript-leaf hash into a running Merkle accumulator. Appendix F.3
 is the sole leaf definition and accepted-version rule; V3 is the current TOPLOC-binding format for a
@@ -2345,8 +2421,9 @@ hoarding/cornering, wash/Sybil bidding, attestation-gamed pricing, MEV-on-comput
 griefing. The FLOP asymmetry: TEE-bonded miners are Sybil-hard supply while lightweight agents are
 Sybil-soft demand , so §2.4's Sybil cost MUST extend to the demand side (registered
 agent_identity_min_stake + reservation = a capital floor linear in
-identity count). The current registry merely reserves/locks that minimum; it neither burns nor slashes
-it, so the floor is capital exposure rather than an irrecoverable identity cost.
+identity count). The current registry reserves that minimum and neither burns nor slashes it. Stake
+above the minimum can be withdrawn, but no path that releases the minimum itself is specified yet, so
+until one is, the floor is capital locked per identity rather than a refundable deposit.
 R12.3. A collusion response MUST perturb the mechanism (re-randomize the auction, coarsen the
 grid, inject synthetic demand) rather than punish individuals (no provable intent). Monitoring gauges
 (bid-dispersion collapse, held/circulating ratio, utilization→scarcity) drive both the detector and the
@@ -2363,8 +2440,8 @@ reference work rather than hardware peak throughput. The standard object pairs
 1,000,000 G_n (10¹⁵ reference FLOPs under an identified metering profile) with a
 purchaser-selected, provider-supported pinned model; a maximum 1,000 ms completion
 time for each eligible chunk after miner acceptance; and a default delivery start
-at 12:00 UTC on calendar day D+7 with an explicit end. These owner-selected object
-inputs and the service policy below are ratified by D-0538.
+at 12:00 UTC on calendar day D+7 with an explicit end. These object inputs and the
+service policy below are ratified by D-0538.
 Quantity, admission capacity, service duration and accepted-chunk latency are
 separate dimensions; seven days is lead time, not the service duration or a
 synchronized settlement appointment.
@@ -2471,8 +2548,10 @@ history bound MUST cover every permitted delivery, be authenticated and fixed
 before funding, and fit the serving implementation; it MUST NOT truncate
 evidence or introduce a later cutoff on sold rights.
 Default duration MUST be one UTC day; selected duration MAY be 1–30 whole days;
-the pilot MUST use one day. New request eligibility MUST end 1,100 ms before
-sold delivery end, allowing the full admission and accepted-chunk budgets. D in R12.5f
+the pilot MUST use one day. New request eligibility MUST end
+fcu_acceptance_budget_ms +
+fcu_accepted_chunk_max_ms (1,100 ms at the Appendix A values)
+before sold delivery end, allowing the full admission and accepted-chunk budgets. D in R12.5f
 MUST come from the finalized purchase block's validated UTC timestamp. Freshness
 MUST be based on authenticated finalized state; new admissions MUST pause when
 its conservatively bounded age exceeds
@@ -2514,16 +2593,7 @@ cutoff. At that cutoff, an unchallenged unresolved evidence failure or late clai
 MAY become final on the authenticated finalized settlement path; a timely
 contested claim MUST await an authenticated final verdict. Ordinary final
 claims MUST NOT be reversed or clawed back.
-R12.5o — Finalized credit accounting. Let D be cumulative verified delivered G_n, F cumulative finalized compensable
-G_n, U unique provisional compensable G_n and C cumulative irreversible SLA credits.
-The ledger MUST maintain 0 <= F <= D <= Q , F + U <= D and
-C = floor(P * F / Q) <= P . Only final eligibility MUST enter F/C. Finalizing
-unique g MUST atomically remove it from U, pay the original beneficiary
-floor(P * (F + g) / Q) - C , advance F/C and mark the claim final. F/C MUST NOT
-decrease or reset on resale, pause, close or default. Canonical finalized-chain
-order MUST allocate currency atoms; total payout is partition invariant, while
-rounding can allocate a currency atom differently between beneficiaries.
-R12.5n — Transfer, closure and reserve release. Physical pending work and
+R12.5n — Transfer, closure and reserve release. (F, U and C as defined in R12.5o.) Physical pending work and
 unsettled compute receipts MUST be reconciled under canonical non-rollback
 journal history, idempotent worker jobs and monotonic fences before transfer,
 close or default. Financial resale MUST NOT rotate the receipt coordinator;
@@ -2534,17 +2604,26 @@ and receipts reconcile, and each payable claim is paid or encumbered. After the
 cutoff with no further ordinary claims admissible, unresolved U MUST retain
 at least floor(P * (F + U) / Q) - C in reserve. Systemic pause and D-0430
 safeguards MUST retain their existing scope.
+R12.5o — Finalized credit accounting. Let Y be cumulative verified delivered G_n, F cumulative finalized compensable
+G_n, U unique provisional compensable G_n and C cumulative irreversible SLA credits.
+The ledger MUST maintain 0 <= F <= Y <= Q , F + U <= Y and
+C = floor(P * F / Q) <= P . Only final eligibility MUST enter F/C. Finalizing
+unique g MUST atomically remove it from U, pay the original beneficiary
+floor(P * (F + g) / Q) - C , advance F/C and mark the claim final. F/C MUST NOT
+decrease or reset on resale, pause, close or default. Canonical finalized-chain
+order MUST allocate currency atoms; total payout is partition invariant, while
+rounding can allocate a currency atom differently between beneficiaries.
 Rationale & sources (non-normative)
-The explorer candidate displays exact six-decimal FCU quantities, provider prices
+The reference explorer displays exact six-decimal FCU quantities, provider prices
 and FLOP remedy amounts. Indexed financial history retains block-hash and
 best/finalized provenance. A pause-event observation supplies no activation or
 purchase authority; qualified chain state determines eligibility. Existing records
 show their original block window. Native UTC/profile/reserve projections remain
-dependent integration work, and pilot/economics qualification is still pending.
+dependent integration work, and service/economics qualification is still pending.
 Provenance: D-0538
-(owner-ratified service policy; qualification remains pending), D-0536
-(owner-adopted booking horizon and retained activation gates), D-0534
-(owner-adopted representation and payment rules), consolidated FCU proposal.
+(ratified service policy; qualification remains pending), D-0536
+(booking horizon and retained activation gates), D-0534
+(representation and payment rules), consolidated FCU proposal.
 Absolute timing refinement preserves both authenticated event intervals, rather
 than only their elapsed-time range. Disjoint completion intervals cannot be
 refinements. These arithmetic results assume valid independently authenticated
@@ -2575,7 +2654,7 @@ triz-ifr-agent-market-ideas.md (C-TRIZ pass: system IFR,
 open-contradictions ledger, verification/discovery/fairness clusters),
 agent-demand-discovery-mechanisms.md (agent demand
 loop: typed need, bounded spot proof, receipt propagation, graduated FCU commitment),
-FCU object proposal (owner requirements, full feature matrix and unresolved enforcement decisions),
+FCU object proposal (requirements, full feature matrix and unresolved enforcement decisions),
 proposal-capacity-reservation-units.md (FCU —
 bonded forward compute, ratified as D-0434; implementation as forward-dated channels),
 term-curve-methodology-v0.md (the observational FCU forward
@@ -2790,8 +2869,8 @@ margin composition and validator-side freeze are E.57; slash-lock covers the min
 n/a
 V12
 Committee capture / sampling bias
-uniform draw over live seats (R15.4a, R15.4d) off a seed hashed from a per-block VRF window ending before the session (R15.4b)
-exact without-replacement capture tail over equal seats ( ValidatorSetV2 ); seed-influence bound, lookahead and committee size are E.42/E.58
+uniform draw over live seats (R15.4a, R15.4d) off a seed hashed from a per-block VRF window ending before the session, with a warned/evented epoch fallback for an empty window (R15.4b)
+exact without-replacement capture tail over equal seats ( ValidatorSetV2 ); δ=60 and k=10 are placeholders, not a seed-influence proof; lookahead and committee size remain E.42/E.58
 n/a (open safety premise)
 13.3 Validator attestation quorum (BFT fraction)
 Active validators run DCAP/dstack off-chain and submit ValidatorAttestation bundles; the chain checks
@@ -3052,12 +3131,20 @@ uniformly without replacement off the R15.4b seed; stake MUST NOT weight the dra
 finality-aleph . The selection predicate uses the active set, stake, and recency at sampling; it
 does not assert that those inputs remain unchanged for the lifetime of the saved committee.
 R15.4b. The sampling seed MUST be the hash of the BABE per-block VRF outputs, in block order,
-of the k blocks in a window ending a lookahead δ before the session boundary, accumulated on-chain
-as those blocks are imported and domain-separated per session; if no block in the window carries a VRF
-output the runtime MUST fall back to BABE-VRF epoch randomness and emit an event. The committee is
-publicly known no earlier than δ before the boundary; an author holding every slot of the window can
-know it earlier, and an author in the window can withhold its block to re-roll, so this does not by
-itself prove unbiasability. The values of δ and k are E.58; the seed-influence and repeated-draw
+of the k blocks in (B − δ − k, B − δ] , where B is the session boundary,
+δ is committee_seed_lookahead_blocks and k is
+committee_seed_window_blocks . Both MUST be positive and
+δ + k MUST NOT exceed AlephEpochBlocks . The accumulator MUST reset before the first
+included block and fold available outputs during block finalization after BABE using the
+Appendix F.1 committee preimages ; plain slots MUST NOT reuse
+BABE's retained prior output. It MUST freeze after B − δ through the boundary and the draw
+seed MUST use the Appendix F.1 v2 definition. If no block in the window carries a VRF output
+the runtime MUST use the Appendix F.1 v1 epoch-randomness fallback, warn, and emit
+CommitteeSeedFallback . For a full VRF-bearing window, the public lookahead is δ blocks;
+earlier plain slots or an empty window can lengthen it. An author holding every contributing slot
+can know the seed earlier, and an author in the window can withhold its block to re-roll, so this
+does not by itself prove unbiasability. The placeholder values of δ and k remain E.58;
+positive δ lets capture finalize before rotation at on_initialize(B) . The seed-influence and repeated-draw
 analysis is E.42.
 R15.4c — Verification liveness. A validator's recency signal ( LastVerifiedWork ) MUST be
 refreshed only by an on-chain accepted verification duty: (a) being a signer of an accepted
@@ -3099,11 +3186,13 @@ fixed rotation interval and no forced rotation.
 R15.5 — Stake-ranked re-selection. At each session boundary the active set MUST be the
 validator_active_set_cap eligible validators with the most bonded
 self-stake (§15.2 rank stake), where eligible means bonded self-stake ≥ effective_minimum_stake() ,
-SLA passing (R15.5c), not jailed or blacklisted, and a registered Aleph session key. Ties MUST go to
-the earlier registration. A seated validator MUST keep its seat unless it is outbid, fails its SLA,
-is slashed below the floor, or exits: a candidate MUST replace the lowest-ranked incumbent only when
+SLA passing (R15.5c), not jailed or blacklisted, and a registered Aleph session key. Each registered
+validator account MUST occupy at most one seat; seats are equal and carry no stake weight above the
+floor, so bonded self-stake above it affects only selection among eligible validators for the seats,
+never reward share (R9.5). Ties MUST go to the earlier registration. There is no forced rotation: a seated validator MUST keep its seat unless it
+is outbid, fails its SLA, is slashed below the floor, or exits: a candidate MUST replace the lowest-ranked incumbent only when
 its bonded self-stake is at least (1 + h) times the incumbent's, and no more than a per-session cap of
-seats MUST change hands by outbidding in one session ( h and the cap are E.59). Re-selection
+seats MUST change hands by outbidding in one session ( h and the cap are placeholders under E.59, with no conformance claim on their values). Re-selection
 MUST preserve at least
 validator_min_active_validators = 4 active seats
 ( deregister , jail , and kick MUST likewise reject removal at or below the floor, and a
@@ -3122,9 +3211,10 @@ predicates are: BABE authorship against the seat's expected share of slots; fina
 in committee sessions the seat sat in, from justification signer sets or the seat's own submitted
 finality signatures (R15.4d); the per-session heartbeat; DA audit responses and repair obligations (R5.3b); and verification duty
 (R15.4c). A failed window MUST forfeit that window's reward share (R9.5); repeated failures MUST
-jail the seat, and extended jail MUST start its unbonding (R15.7a). Thresholds, the ladder's counts
+jail the seat, and extended jail MUST start its unbonding (R15.7b). Thresholds, the ladder's counts
 and lengths, the forfeiture sink, and the degraded-mode tiers that tighten exclusion and throttle new
-DA and paid-storage admission when the live set falls toward the committee size are E.59.
+DA and paid-storage admission when the live set falls toward the committee size are placeholders
+under E.59, with no conformance claim on their values.
 R15.5d — In-place top-up. A registered or seated validator MUST be able to add bonded
 self-stake without re-registering, so that rank can be defended and a raised value-coupled floor met.
 Set size. The active set is capped at 1,000 ; the finalizing committee is 100 (§15.4), drawn
@@ -3146,7 +3236,7 @@ validator_rotation_churn_percent ,
 validator_min_scored_samples ,
 ejection_cooldown_blocks ) and the pending proposal
 D-0508;
-they remain in the runtime until #3656 replaces do_rotate .
+they remain in the runtime until per-session re-selection replaces do_rotate .
 15.6 The validator across the session lifecycle
 Inference streams off-chain, so ordinary validation does not re-execute every inference turn. Settlement
 still performs work proportional to submitted turns, signatures, and Merkle paths, and sampled audits add
@@ -3197,7 +3287,7 @@ Rationale & sources (non-normative)
 Provenance: D-0539 (flat floor, stake-ranked equal seats, uniform live-seat committee, reward bond,
 linear unlock, unbonding and slash order; supersedes D-0416 rotation and the 9 %/yr growth of D-012,
 whose parameters validator_growth_numerator , validator_growth_denominator and
-finality_committee_premium_weight_ppm are deprecated pending #3655), D-0408 (single
+finality_committee_premium_weight_ppm are deprecated until they leave the runtime), D-0408 (single
 validator-staking system), D-0413 (value-coupled floor), D-0437 (active-set cap), D-0409 (flat fraud classes), D-0419
 (unbonding slash-lock), D-0420 (correlated equivocation), D-0501 (seat premise and cooperative-credit
 scope), D-0439 (verification liveness; CPU-class validator), D-0529 (zero-burn slash routing to
@@ -3260,12 +3350,17 @@ validator_min_stake
 1_200_000 FLOP
 §9
 D-0440
-Baseline floor (MinimumValidatorStake); flat under D-0539, which removes the former 9%/yr growth (runtime removal #3655).
+Baseline floor (MinimumValidatorStake); flat under D-0539, which removes the former 9%/yr growth.
 airdrop_vesting_duration_blocks
 7_776_000 blocks
 §8.2
 SPEC-022
 Interim pallet schedule: 90-day linear airdrop vesting at 1-second block time, governing no ratified grant tier (§8.2).
+era_t_season_blocks
+7_776_000 blocks
+§8.2
+D-0547
+Era-T (testnet) season length, a testnet configuration value whose default and maximum is 7,776,000 blocks (90 d at 1 s blocks); governance may ratify an earlier snapshot height, so a season can be shorter (yellowpaper §8.2 R8.5a).
 Emission & Rewards
 Parameter
 Value
@@ -3317,7 +3412,7 @@ Blocks between block-rewards distributions (one day at 1 s blocks).
 gn_decay_factor_ppb
 1_000_000_000 ppb
 §9
-GnDecayFactor read when the key is absent: 1.0, i.e. NO decay, so a period's miner leg is split purely by verified G_n (owner decision 2026-10-01, #2144).
+GnDecayFactor read when the key is absent: 1.0, i.e. NO decay, so a period's miner leg is split purely by verified G_n (decided 2026-10-01).
 finality_committee_premium_weight_ppm
 1_100_000 ppm
 §9.1
@@ -3359,10 +3454,10 @@ miner_unbonding_blocks
 §6.1
 Miner unbonding period (~7 days at 1s/block).
 miner_capacity_stake_per_gflop
-VFY / 100 (= 0.01 FLOP per GFLOP/s)
+VFY / 30_240_000 FLOP per G_n of exposure (floors to 33,068,783,068 base units)
 §6.1
-D-0418
-Capacity-proportional miner self-stake = min_miner_self_stake + B_p * this (LINEAR, NO CAP — a cap would make the largest miners' fraud +EV; D-0418, ENG-8). 0.01 FLOP per GFLOP/s of CALIBRATED B_p (VFY/100, where VFY = 1 FLOP).
+D-0541
+Capacity-proportional miner self-stake rate (LINEAR, NO CAP — a cap would make the largest miners' fraud +EV; D-0418, ENG-8). required_self_stake = min_miner_self_stake + this * floor(B_p * miner_stake_revocation_latency_blocks * miner_stake_surge_multiplier_ppm / 1e6), with B_p the CALIBRATED cap in G_n/s (hw-calibration daily G_n / 86_400).
 miner_stake_revocation_latency_blocks
 604_800 blocks
 §6.1
@@ -3389,6 +3484,21 @@ calibration_provisional_discount_ppm
 900_000 ppm
 §7.1
 HARD-tier provisional discount applied to attested SKU ceilings before min(empirical_burst_cap, discounted_sku_ceiling). yellowpaper §7.1.
+calibration_max_soft_cap_gn_per_sec
+999_999 G_n/s
+§7.1
+D-0542
+Ceiling on a SOFT (non-attested) effective calibration cap.
+channel_max_unconsented_session_blocks
+14_400 blocks
+§7.1
+D-0543
+Longest SLA window a bare open_channel (no miner signature) may reserve calibration capacity for: 4 h at 1 s blocks.
+channel_unconsented_reservation_tariff
+41_335_978_835 base unit (10^-18 FLOP) per G_n
+§7.1
+D-0544
+Minimum escrow per reserved G_n that a bare open_channel must post: escrow >= reserved rate x max(window, 1) x this.
 calibration_lease_blocks
 604_800 blocks
 §7.2
@@ -3415,7 +3525,7 @@ miner_capacity_stake_sim_per_10_gflop
 0.1 FLOP per 10 GFLOP/s
 §6.1
 D-0418
-Simulator mirror of miner_capacity_stake_per_gflop (D-0418).
+Simulator capacity-bond coefficient in the D-0418 form base + k * B_p.
 Compute-channel timing bounds
 Parameter
 Value
@@ -3437,8 +3547,9 @@ Value
 Decision
 Description
 max_active_reservations_base
-4 count
+400 count
 §12.2
+D-0540
 Base number of concurrent active capacity reservations per agent identity.
 escrow_per_reservation_slot
 50 FLOP
@@ -3446,7 +3557,7 @@ escrow_per_reservation_slot
 Escrow (in FLOP) that grants +1 additional active reservation slot beyond base.
 fcu_blocks_per_day
 86_400 blocks
-§12.2
+§12.5
 D-0434
 D-0434 whole UTC day at the 1-second target cadence; controls forward window alignment and liveness accounting.
 fcu_acceptance_budget_ms
@@ -3456,7 +3567,7 @@ D-0538
 D-0538 §12.5 ratified service policy; implementation remains default-inactive pending production, pilot and economics qualification.
 fcu_accepted_chunk_max_ms
 1_000 ms
-§12.2
+§12.5
 Maximum accepted-chunk completion latency, measured from miner acceptance under the sold profile.
 fcu_finality_freshness_ms
 10_000 ms
@@ -3475,46 +3586,52 @@ D-0538
 D-0538 §12.5 timing-proof grace or minimum post-delivery challenge window; existing longer dispute/DA deadlines remain binding.
 fcu_delivery_series_count
 14 series
-§12.2
+§12.5
 New primary offers expose UTC-calendar D+1 through D+14 delivery starts at 12:00 UTC. D is the authoritative purchase date.
 fcu_max_tenor
 2_592_000 blocks
-§12.2
+§12.5
 D-0434
 D-0434 launch tenor cap: 30 times 86,400 blocks, or 30 target-cadence days.
-fcu_min_gn
-10_000 G_n
+model_registry_base_price_per_gn
+VFY / 2_000_000 base units per reference G_n (5e-7 FLOP)
 §12.2
-Fee-share floor: transfer_forward_units costs 35e6 ref_time plus ExtrinsicBaseWeight (~1.045e8) plus 8 reads and 4 writes, at TransactionPicosecondFee = 5e6 planck/unit, roughly 0.0025 FLOP per transfer.
+D-0533
+Devnet-ts validation value, ratified 2026-11-18 (D-0533).
+fcu_min_gn
+100_000_000 G_n
+§12.5
+D-0533
+Fee-share floor: transfer_forward_units plus ExtrinsicBaseWeight costs 614,081,000 ref_time with the current 19 reads and 4 writes, at TransactionPicosecondFee = 5e6 planck/unit: 0.003070405 FLOP. At the BasePricePerGFLOP = 0.0000005 FLOP benchmark of proposed D-0533 (not ratified), the exact minimum for a 1 bp fee share is 61,408,100 G_n.
 fcu_liveness_checks_per_day
 2 checks/day
-§12.2
+§12.5
 Structural Ghost observation cadence, retaining the existing FCU reference configuration: two checks per target-cadence day.
 fcu_missed_liveness_tolerance_ppm
 200_000 ppm
-§12.2
+§12.5
 Structural missed-check threshold, retaining the existing FCU reference configuration (20 percent).
 fcu_bond_grace
 86_400 blocks
-§12.2
+§12.5
 D-0434
 One target-cadence day after the reservation end for bond escrow, matching the D+1 settlement deadline in D-0434 section 2.
 fcu_lot_fraction_ppm
 1_000_000 ppm
-§12.2
+§12.5
 D-0434
 D-0434 bilateral launch: a holder must take the entire reservation.
 fcu_entropy_epoch_delay
 3 epochs
-§12.2
+§12.5
 The target epoch is fixed three BABE epochs after registration seals, preserving the TwoEpochsAgo commitment gap.
 fcu_entropy_execution_epochs
 2 epochs
-§12.2
+§12.5
 A sealed bid may enter reveal in its fixed target epoch or the following epoch.
 fcu_entropy_history_epochs
 6 epochs
-§12.2
+§12.5
 The six-slot entropy ring outlives every two-epoch execution window.
 min_certificate_premium_ppm
 1_500_000 ppm
@@ -3675,7 +3792,15 @@ finality_committee_size
 100 count
 §15.4
 D-0539
-AlephBFT finalizing committee size: drawn uniformly without replacement from the live, PoI-gated seats of the active set off a per-block VRF seed revealed before the session (D-0539; runtime still samples stake-weighted off the BABE epoch seed until #3656 and #3646).
+AlephBFT finalizing committee size: drawn uniformly without replacement from the live, PoI-gated seats of the active set off a per-block VRF seed revealed before the session (D-0539).
+committee_seed_lookahead_blocks
+60 blocks
+§15.4
+Positive lookahead delta from the last captured BABE per-block VRF output to the Aleph committee boundary (§15.4 R15.4b).
+committee_seed_window_blocks
+10 blocks
+§15.4
+Positive window length k for ordered BABE VRF accumulation (§15.4 R15.4b).
 validator_attestation_threshold
 666_666_666 perbill-parts
 §3.6
@@ -3707,22 +3832,22 @@ validator_rotation_interval_blocks
 2_592_000 blocks
 §15.5
 D-0416
-[SUPERSEDED — D-0539] Retained in the runtime until #3656 replaces do_rotate with per-session re-selection.
+[SUPERSEDED — D-0539] Retained in the runtime until per-session re-selection replaces do_rotate.
 validators_to_eject
 50 count
 §15.5
 D-0539
-[SUPERSEDED — D-0539] Retained in the runtime until #3656 replaces do_rotate with per-session re-selection.
+[SUPERSEDED — D-0539] Retained in the runtime until per-session re-selection replaces do_rotate.
 validators_to_promote
 50 count
 §15.5
 D-0539
-[SUPERSEDED — D-0539] Retained in the runtime until #3656 replaces do_rotate with per-session re-selection.
+[SUPERSEDED — D-0539] Retained in the runtime until per-session re-selection replaces do_rotate.
 validator_active_set_cap
 1_000 count
 §9.3
 D-0437
-Maximum active validators in ActiveValidators (admitted by rotation promotion from ValidatorQueue or direct un_jail/rejoin restoration). yellowpaper §9.3 R9.9, §15.5.
+Maximum active validators in ActiveValidators (admitted by per-session re-selection (R15.5) or un_jail/rejoin restoration). yellowpaper §9.3 R9.9, §15.5.
 validator_min_active_validators
 4 count
 §15.5
@@ -3731,17 +3856,17 @@ validator_rotation_churn_percent
 10 percent
 §15.5
 D-0539
-[SUPERSEDED — D-0539] Retained in the runtime until #3656 replaces do_rotate with per-session re-selection.
+[SUPERSEDED — D-0539] Retained in the runtime until per-session re-selection replaces do_rotate.
 validator_min_scored_samples
 3 count
 §15.5
 D-0539
-[SUPERSEDED — D-0539] Retained in the runtime until #3656 replaces do_rotate with per-session re-selection.
+[SUPERSEDED — D-0539] Retained in the runtime until per-session re-selection replaces do_rotate.
 ejection_cooldown_blocks
 604_800 blocks
 §15.5
 D-0539
-[SUPERSEDED — D-0539] Retained in the runtime until #3656 replaces do_rotate with per-session re-selection.
+[SUPERSEDED — D-0539] Retained in the runtime until per-session re-selection replaces do_rotate.
 validator_unbonding_blocks
 1_814_400 blocks
 §13
@@ -3756,17 +3881,17 @@ validator_growth_numerator
 109 ratio
 §15.2
 D-0413
-[DEPRECATED — D-0539] Numerator of the former annual compounding factor on the validator minimum-stake floor (109/100 = +9%/yr); the floor is flat under D-0539, and the runtime constant is retained pending removal in #3655. yellowpaper §15.2.
+[DEPRECATED — D-0539] Numerator of the former annual compounding factor on the validator minimum-stake floor (109/100 = +9%/yr); the floor is flat under D-0539, and the runtime constant is retained pending removal from the runtime. yellowpaper §15.2.
 validator_growth_denominator
 100 ratio
 §15.2
 D-0413
-[DEPRECATED — D-0539] Denominator paired with validator_growth_numerator (109/100 = +9%/yr); retained pending removal in #3655. yellowpaper §15.2.
+[DEPRECATED — D-0539] Denominator paired with validator_growth_numerator (109/100 = +9%/yr); retained pending removal from the runtime. yellowpaper §15.2.
 validator_reward_bond_ppt
 500 parts-per-thousand
 §9.1
 D-0539
-Share of each active seat's validator block-reward leg that is added to its bonded self-stake and to its lock (D-0539); the remainder and all fees are liquid.
+Share of each active seat's validator block-reward leg that is bonded and locked: at 500 ppt, 50% of the share is added to the seat's bonded self-stake and to its lock and 50% is liquid on issue, and every validator fee leg is liquid (D-0539; yellowpaper §9.1 R9.13).
 validator_unlock_duration_blocks
 315_360_000 blocks
 §8.2
@@ -3857,6 +3982,11 @@ inference_fee_validator_share_ppt
 §9
 D-0525
 #2702 (D-0525): Executive ruling (Shu, 2026-10-14).
+inference_fee_initialization_batch
+1 validators-per-block
+§12.1
+D-0545
+Maximum validator seats initialized per block before prospective fee-credit activation.
 audit_fee_split_ppm
 10_000 ppm
 §9
@@ -3986,6 +4116,15 @@ da_lease_deposit_per_byte
 §5.3
 D-0412
 D-0412 refundable anti-spam deposit for leased DA (model weights): deposit = bytes × DepositPerByte, held on the publisher (never validator revenue), returned in full on prune/withdrawal.
+Voucher test fixture
+Parameter
+Value
+§
+Decision
+Description
+voucher_fixture_record_limit
+1_024 records
+Existing record bound for test-fixture authenticated earnings and for both fixture and dormant-profile credited event/leg and escrow hold records.
 Agent wallet / session keys
 Parameter
 Value
@@ -3999,7 +4138,7 @@ Wallet and session daily spend-cap window: resets on the first spend at or after
 agent_identity_min_stake
 10 FLOP
 §12.3
-Refundable minimum stake locked to register an agent identity: capital exposure, not an irrecoverable identity cost. yellowpaper §12.3.
+Minimum stake reserved to register an agent identity; it is neither burned nor slashed.
 circuit_breaker_window
 60 blocks
 §6.2
@@ -4219,6 +4358,14 @@ finality_committee_size
 AlephMaxCommittee
 —
 —
+committee_seed_lookahead_blocks
+CommitteeSeedLookaheadBlocks
+—
+—
+committee_seed_window_blocks
+CommitteeSeedWindowBlocks
+—
+—
 validator_attestation_threshold
 PouiDefaultValidatorAttestationThreshold
 —
@@ -4344,11 +4491,15 @@ ChannelAuditForfeitSlashPpm
 —
 —
 inference_fee_miner_share_ppt
-INFERENCE_FEE_MINER_SHARE_PPT
+InferenceFeeMinerSharePpt
 —
 —
 inference_fee_validator_share_ppt
-INFERENCE_FEE_VALIDATOR_SHARE_PPT
+InferenceFeeValidatorSharePpt
+—
+—
+inference_fee_initialization_batch
+InferenceFeeInitializationBatch
 —
 —
 audit_fee_split_ppm
@@ -4425,6 +4576,10 @@ k
 —
 da_lease_deposit_per_byte
 DaDepositPerByte
+—
+—
+voucher_fixture_record_limit
+voucher_devnet::RECORD_LIMIT
 —
 —
 agent_cap_window_blocks
@@ -4557,8 +4712,9 @@ Decisions v0.4 — D-0401 .. D-0441 (consensus, sovereign DA, sessions, measured
 model_hash , measured G_n , validator-native attestation, governance, rotation-by-stake,
 composability, capacity-proportional miner stake, unbonding slash-lock, correlated equivocation, TOPLOC
 required, TEE-optional) + the v0.3 → v0.4 changelog.
-Decisions v0.5 — D-0501 .. D-0533 (public claim scope, wire formats,
-paid storage, validator policy, grant unlocks, reward routing, and parameter calibration).
+Decisions v0.5 — D-0501 .. D-0547 (public claim scope, wire formats,
+paid storage, validator policy, grant unlocks, reward routing, parameter calibration, FCU, model
+identity, inference-fee credits, and the Era-T season length).
 Research corpus (each doc carries its full citation set): the
 whitepaper/research/ directory is the long-form grounding for every section; the
 per-section Rationale & sources trailers link the docs relevant to each. Cross-cluster index:
@@ -4674,7 +4830,7 @@ tx sender
 0% burn ( tx_fee_burn_percent_live = 0%, BurnFees , D-0529)
 Session escrow settle
 agent
-miner 85% ( inference_fee_miner_share_ppt ) · validators 15% ( inference_fee_validator_share_ppt , of which audit_fee_split_ppm = 1% funds the audit pool; validator remainder distributed intra-pool by R9.5 weight, liquid on issue per D-0518)
+miner 85% ( inference_fee_miner_share_ppt ) · validators 15% ( inference_fee_validator_share_ppt , of which audit_fee_split_ppm = 1% funds the audit pool; validator remainder allocated equally per active seat as funded claimable credits for D-0545 profile 1; legacy channels preserve their historical terms)
 —
 Session under-use (measured < reserved)
 —
@@ -4751,8 +4907,8 @@ reading rule that enactment outlives the 21 d validator unbonding — sign off t
 Home: §14.1. Blocking: #681.
 E.22 — Aggregate reservation + statistical drift + cache-aware metering [PLANNED] (M6/M13).
 Quick-canary count, timed packs, lease/renewal cadence, restart supervisor, expiry, multi-GPU
-fingerprint invalidation, and deposit-before-activation are live under D-0433. Remaining: miner-wide
-capacity reservation across overlapping channels; rolling eligible-work coverage and automatic
+fingerprint invalidation, and deposit-before-activation are live under D-0433; miner-wide capacity
+reservation across overlapping channels is R7.1e (D-0542). Remaining: rolling eligible-work coverage and automatic
 degradation downshift; canonical production fingerprint acquisition; per-SKU MLPerf plausibility
 datasets; and a proof-bound cached-prefix witness so reused prompt prefill is not charged again.
 SPEC-026 applies ceiling rejects, co-signed EWMA rebates, reputation, and slashing only for timing
@@ -4783,10 +4939,9 @@ block authoring authority. AlephBFT finality remains sub-sampled to the 100-memb
 ( finality_committee_size = 100, AlephMaxCommittee = 100).
 Storage bound for ActiveValidators is aligned from ConstU32<10_000> to ConstU32<1_000> with
 decode-compat verified against prior SCALE encoding. Home: §15.5, §15.4. Decisions: D-0437, D-0526. Closed: #1393.
-E.42 — Committee seat-capture model [TBD] . Establish a capture bound for the implemented
-weighted-without-replacement draw over distinct eligible identities. The model must use seat count as the
-AlephBFT safety variable and cover unequal stakes, small eligible pools, stake splitting, repeated draws,
-and BABE-VRF seed influence. Retain the 40 Byzantine identities at stake 1 versus 61 honest identities at
+E.42 — Committee seat-capture model [TBD] . Establish a capture bound for the R15.4a uniform
+without-replacement draw over equal live seats. The model must use seat count as the AlephBFT safety
+variable and cover small eligible pools, identity splitting, repeated draws, and seed influence. Retain the 40 Byzantine identities at stake 1 versus 61 honest identities at
 stake 3, drawing 100 of 101, as a regression case: Byzantine aggregate stake is 40/223 ≈ 17.94% while every
 draw contains 39 or 40 Byzantine seats. Placeholder: no aggregate-stake/binomial bridge; conformance
 requires a separately justified strict <⅓ Byzantine-seat premise.
@@ -4820,7 +4975,7 @@ adjudication, and collection events, with each factor conditioned on all prior e
 independence or Markov assumption. Placeholder:
 total_profitable_exposure < p_effective × collectible_penalty is a conditional risk-neutral deterrence
 budget, not a unique-equilibrium or zero-fraud theorem. Home: §3.5, §6.1, §11.3, §12.2. Blocking:
-aggregate reservation E.22 plus a ratified payoff model. Tracking: #1495.
+a ratified payoff model; aggregate reservation is R7.1e. Tracking: #1495.
 E.46 — Direct/session capacity evidence [PENDING; PARTIAL EVIDENCE] . This mechanism remains open.
 Internal source-checked fixtures reproduce exact SCALE bytes for supported direct active-set/quorum sizes
 and cooperative/unilateral settlement over turn/path limits, a duplicate-last bundle, TOPLOC evidence
@@ -4927,9 +5082,10 @@ validator_rotation_churn_percent = 10%, and
 validator_min_scored_samples = 3, and slashes/blacklists a proven
 fault at the floor immediately while deferring seat removal until rotation promotes replacements. Open:
 the floor's relation to the seeded launch cohort (20–50 seats, D-0507), to E.42's committee-safety
-premise, and whether an ejection batch that reaches the floor is skipped or truncated under the ratified
-rotation policy (D-0508). Placeholder: the 4-validator floor is a non-drain guard, not an N=100
-committee-safety proof. Home: §15.5. Blocking: D-0508 ratification and E.42 alignment. Tracking: #1792,
+premise, and whether an ejection batch that reaches the floor is skipped or truncated under D-0539's
+stake-ranked re-selection (R15.5), which supersedes the D-0508 proposal. Placeholder: the 4-validator
+floor is a non-drain guard, not an N=100 committee-safety proof. Home: §15.5. Blocking: D-0539
+re-selection replacing do_rotate and E.42 alignment. Tracking: #1792,
 #1711; containment #1727 completed.
 E.57 — Validator unbonding vs dispute lifecycle [TBD] . State one right-hand side for the validator
 stake-exit bound and make §15.7, V11 and Appendix I agree with it and with the runtime. D-0419 ratifies
@@ -4950,10 +5106,13 @@ is ≤ 1.4e-9 at 200 seats and ≤ 1.31e-2 at 100 ( ValidatorSetV2 ). AlephBFT h
 seats with 1 s blocks. Separately, R15.4b's lookahead δ must cover aleph-node's connection setup
 to the next committee, and its window length k sets how many consecutive authors an adversary must
 hold to know the seed early. Placeholder:
-finality_committee_size = 100, and the epoch-randomness fallback
-of R15.4b applies until δ and k are set. Home: §2.2, §15.4. Blocking: a WAN benchmark of AlephBFT round
+finality_committee_size = 100,
+committee_seed_lookahead_blocks = 60 blocks (connection setup
+not yet measured), and committee_seed_window_blocks = 10 blocks
+(not yet ratified). R15.4b's epoch-randomness fallback applies only to windows without a captured VRF
+output, including genesis. Home: §2.2, §15.4. Blocking: a WAN benchmark of AlephBFT round
 latency at 100, 150 and 200 seats at 1 s blocks, and a measured connection-setup time, recorded as a
-D-id. Tracking: #3646, #3656.
+D-id.
 E.59 — Seat SLA thresholds, re-selection margins and degraded mode [RATIFY] . R15.5 and R15.5c
 fix the mechanisms; their values are open:
 the outbid margin h and the per-session replacement cap;
@@ -4969,7 +5128,7 @@ the standby, re-proof and probation path for an excluded seat.
 Placeholder: the proposal's defaults — h = 2 %, a cap of 1 % of the cap per session, one-day
 windows, 3 failed windows of 7 to jail, 30 d extended jail, tiers at 3× the committee and at the
 committee size. No conformance claim on any value. Home: §9.1 R9.5, §15.5. Blocking: a D-id ratifying
-the values. Tracking: #3656.
+the values.
 E.60 — In-band finality-stall recovery [PLANNED] . A committee that cannot finalize its session
 cannot be replaced in-band, because the next session starts only after the current one finalizes.
 Neither R15.4d's exclusion nor R15.5 re-selection can act during the stall. Candidates:
@@ -4995,7 +5154,7 @@ D-0529.
 Placeholder: the current §11.3 values and
 da_serve_or_slash_percent , with 100 % of proceeds to
 FLOPFoundationAccount . Home: §5.3 R5.3b, §11.3, §15.7. Blocking: a D-id ratifying values and
-classes. Tracking: #3656.
+classes.
 E.31 — DA-loss terminal settlement split [TBD] . Resolve whether D-0430's full-refund rule
 remains in force or a separately justified "pay last co-signed cumulative receipt, refund the
 unverifiable tail" rule supersedes it, including the evidence predicate, work-credit and forward-channel
@@ -5155,6 +5314,15 @@ F.1 Identity & binding preimages
 Name
 Preimage / definition
 Notes
+PendingCommitteeSeed
+Option<[u8;32]> ; absent key reads None . First VRF output v gives Some(blake2_256(v)) ; further output gives Some(blake2_256(accumulator ‖ v))
+R15.4b; raw hash bytes, no Option tag in hash preimages; plain slots leave it unchanged after the first-block reset
+Aleph committee seed v2
+blake2_256("flop/aleph-committee/v2" ‖ accumulator:[u8;32] ‖ SCALE(B:u32))
+R15.4b; B is the committee boundary
+Aleph committee seed v1 fallback
+blake2_256("flop/aleph-committee/v1" ‖ Babe::randomness():[u8;32] ‖ SCALE(B:u32))
+R15.4b; only when no VRF output was captured; warning plus CommitteeSeedFallback at rotation
 direct-rail task_hash v1
 blake2_256("FLOP/POUI/TASK" ‖ 01 ‖ genesis_hash:H256 ‖ agent:AccountId32 ‖ nonce:u64LE ‖ model_hash ‖ payload_hash ‖ commit_hash)
 producer-derived task identity; runtime receives an opaque H256 and rejects reuse in its deployment-local ProcessedTasks map; validators MUST require this v1 derivation before signing
@@ -5247,7 +5415,13 @@ sr25519 under the channel's agent key over channel_id ‖ turn_index:u32LE ‖ l
 counter-signs the leaf hash and both timing inputs; distinct from agent receipt v1; implemented by turn_ack_message in sdk/typescript/src/compute-channel/transcript.ts and sdk/rust-compute-channel/src/transcript.rs
 agent receipt v1
 sr25519 over "FLOP/COMPUTE_CHANNEL/RECEIPT" ‖ 01 ‖ channel_id ‖ final_root ‖ aggregate_gn:u128LE ‖ payable:u128LE
-authorizes the exact channel, root, aggregate, and settlement amount; payable is a u128LE count of 10⁻¹⁸ FLOP base units and is the gross receipt-bound settlement amount, derived as full reserved escrow for cooperative settle , the R12.1d tariff P for force_settle , or the stored contract_payment override for a forward channel (R12.1i); at settlement, payable is split 85% to the miner ( inference_fee_miner_share_ppt ) and 15% to validators ( inference_fee_validator_share_ppt ), from which the 1% audit earmark ( audit_fee_split_ppm ) is funded (D-0525), and a forward channel additionally refunds unearned availability to the buyer; current channels only
+authorizes the exact channel, root, aggregate, and settlement amount; payable is a u128LE count of 10⁻¹⁸ FLOP base units and is the gross receipt-bound settlement amount, derived as full reserved escrow for cooperative settle , the R12.1d tariff P for force_settle , or the stored contract_payment override for a forward channel (R12.1i); at settlement, payable is split 85% to the miner ( inference_fee_miner_share_ppt ) and 15% to validators ( inference_fee_validator_share_ppt ), from which the 1% audit earmark ( audit_fee_split_ppm ) is funded (D-0525), and a forward channel additionally refunds unearned availability to the buyer; D-0545 pins prospective profile-1 terms while legacy channels preserve historical payment behavior
+spot standing offer v4
+sr25519 over "flop-session-offer-v4" ‖ genesis:SCALE ‖ fee_profile:u8 ‖ spot_payload
+call 52 accepts profile 1 only; forward terms are rejected; legacy call 25 and v1/v3 bytes remain unchanged
+spot offer acceptance v4
+sr25519 under the agent key over "flop-session-offer-accept-v4" ‖ genesis:SCALE ‖ agent:SCALE ‖ fee_profile:u8 ‖ spot_payload ‖ measured_root ‖ decode_policy_hash ‖ agent_key ‖ escrow:SCALE ‖ settlement_class:SCALE
+shared miner nonce tombstone prevents cross-version replay; both signatures bind the same profile
 aggregate_gn check
 checked sum of distinct submitted VerifiedTurn.g_n after signature/path verification ( verified_work_from_turns )
 MUST equal aggregate_gn ; arithmetic/authentication only (§11.2 R11.2a)
@@ -5257,6 +5431,10 @@ bundle bounds
 ChallengeWindowExtensions
 channel_id:H256 → extensions:u8
 per-channel degraded DA deadline-extension count, at most 1 (R13.0b); the sole extension adds channel_dispute_response_window_blocks to the live challenge or response deadline and is cleared when the channel closes
+For v4, spot_payload is the concatenation of the existing spot offer's SCALE fields:
+miner , model_hash , precision , enclave_key , min_escrow , sla , capacity_hint ,
+expiry , nonce , in that order. It excludes the forward: None option tag.
+The shared pallet/Rust/TypeScript fixture is test-vectors/compute-channel/profiled-offer-v4.json .
 SettlementClass selects settlement semantics; it is not the HARD/SOFT assurance tier. The latter is
 a separate miner-calibration snapshot captured at cooperative open_channel or permissionless
 force_ack . The enclave_key argument supplied on either path is a session signing key; the pallet
@@ -5411,16 +5589,24 @@ Effect
 Key errors
 open_channel(miner, model_hash, measured_root, decode_policy_hash, precision, enclave_key, agent_key, sla, escrow, nonce, settlement_class)
 agent (signed)
-reserve escrow; fix Appendix F.3 SettlementClass ; snapshot the miner-calibration assurance tier; verify measured root vs. registry; state → Open
-root mismatch; reservation-cap exceeded; expired lease
+reserve escrow; fix Appendix F.3 SettlementClass ; reserve the miner's per-channel rate (R7.1e) and pin it with the assurance tier; verify measured root vs. registry; bound the window and escrow floor of this miner-unsigned open (R7.1f); state → Open
+root mismatch; reservation-cap exceeded; expired lease; MinerCapacityFullyReserved ; TooManyCapacityReservations ; UnconsentedSessionTooLong ; EscrowBelowCapacityFloor
 force_open(miner, model_hash, measured_root, decode_policy_hash, precision, agent_key, sla, escrow, nonce)
 agent (signed)
 fix SettlementClass::Standard ; state → PendingAck { ack_deadline } ; no session signing key bound
 reservation-cap exceeded
 force_ack(channel_id, enclave_key)
 named miner (signed)
-bind the provenance-neutral session signing key; snapshot the miner-calibration assurance tier; state → Open
-not the named miner; window elapsed
+bind the provenance-neutral session signing key; reserve the per-channel rate (R7.1e) and pin it with the assurance tier; state → Open
+not the named miner; window elapsed; MinerCapacityFullyReserved
+set_capacity_reservation_rate(rate: Option<u64>)
+miner (signed)
+set (or clear to the whole current cap) the G_n/s rate each later channel reserves (R7.1e)
+ZeroCapacityReservationRate
+drop_capacity_reservation(channel_id)
+named miner (signed)
+Open channel only; release its reservation and set its pinned rate to zero, so it settles no further work
+NotNamedMiner ; BadState
 register_session_evidence(channel_id, slot, commitment, size_bytes:u32)
 named miner (signed)
 funded Open channel only; allocate bounded Ephemeral DA via R5.3g; identical retry preserves expiry; emit SessionEvidenceRegistered only for a new slot
@@ -5641,8 +5827,8 @@ LIVE
 pallet_aleph (idx 104); finality-aleph ; 4-validator devnet
 Per-rotation VRF committee sampling
 §2.3, §15.4
-DIVERGENT from D-0539: the runtime draws stake-weighted off BABE epoch randomness, while R2.5/R15.4a–b require a uniform draw over live seats off a seed hashed from a late-revealed per-block VRF window (#3656, #3646). LIVE draw; ≤100 pool returns all; stake-only fallback drops recency whenever no active validator clears both the stake floor and recency (including every recent-work validator below the floor); capture/min-size proof GAP (E.42)
-hp_consensus::sample_committee_weighted ; validators::poui_committee_sampled · #448/#848
+PARTIAL SOURCE: R15.4b's late-revealed per-block VRF window, warned/evented empty-window fallback and v2 domain are wired (#3646); deployment remains separate. DIVERGENT draw: stake-weighted until the uniform live-seat change (#3656). ≤100 pool returns all; stake-only fallback drops recency whenever no active validator clears both the stake floor and recency (including every recent-work validator below the floor); capture/min-size proof GAP (E.42)
+hp_consensus::sample_committee_weighted ; validators::poui_committee_sampled ; runtime PouiCommitteeAdapter ; aleph::PendingCommitteeSeed · #448/#848
 Verification-liveness committee gate (R2.4, R15.4c)
 §2.3, §15.4
 PARTIAL SOURCE: #3272 excludes prover telemetry from both committee selectors and rotation ranking, retaining the warned stake-only bootstrap with primary duty eligibility false. LastVerifiedWork and its prover callback remain telemetry. Final source qualification and deployment are separate gates; Quint correspondence is explicitly user-deferred and the two committee trust claims remain TODO; no protocol-issued duties or attestation client (E.52), and E.42 remains open
@@ -5804,7 +5990,7 @@ Performance-locked vesting R_p² + blackout
 LIVE (Root force_create_grant bypasses the §7 baseline)
 work-vesting
 Era-T conversion snapshot and per-cohort allocation (§8.2)
-PARTIAL (cohort pools enforced; completed-job and active-day weights removed, as R8.4 requires; score caps and aggregation open in E.38)
+PARTIAL (cohort pools enforced; completed-job and active-day weights removed, as R8.4 requires; score caps and aggregation open in E.38; the R8.5a configurable season length is specified only)
 ai-agent-simulator/src/model/testnet-conversion.ts ; docs/plans/ERA_T_TO_ERA_0.md · #1174, #257
 Genesis airdrop funding and grants (§8.2)
 PARTIAL (genesis bridge absent; existing grant calls mint)
@@ -5834,8 +6020,29 @@ H.5 HTLC, invariants, sessions, governance, validators (§10–§15)
 Requirement / mechanism
 Status
 Code path · tracker
+FCU denomination and quantity accounting (§12.5, D-0534; R12.5a, R12.5b)
+PARTIAL: integer- G_n forward accounting, remaining work as quota minus verified delivered work, and checked arithmetic are in the runtime source; FCU primary admission stays off (R12.5g, R12.5h)
+compute-channel::forward ; pallets/runtime/zkverify/src/fcu.rs · #3262
+FCU ownership and lots (§12.5, D-0534; R12.5c)
+PARTIAL: fractional holder transfers with the fcu_lot_fraction_ppm floor and a bounded holder count are in the runtime source; not active while primary admission is off
+compute-channel::forward ( transfer_forward_units ) · #3262
+FCU primary and secondary payment (§12.5, D-0534; R12.5d)
+PARTIAL: atomic listing and fill resale with separate prepayment and bond accounting are in the runtime source; not active while primary admission is off
+compute-channel::{list_forward_units, fill_forward_listing} · #3262
+FCU serving obligation (§12.5, D-0538; R12.5e)
+GAP: no conformance claim for the 1,000 ms accepted-chunk bound; it needs independent timing (R12.5k) and physical pilot qualification (R12.5g), both pending. SDK timing ports only
+sdk/typescript/src/compute-channel/fcu-timing.ts · #3107
+FCU calendar delivery series (§12.5, D-0536; R12.5f)
+PARTIAL: D+1 through D+14 noon-UTC booking-horizon arithmetic in the SDK and Lean; the runtime financial lifecycle is not yet on UTC (see the FCU forward object row)
+sdk/typescript/src/compute-channel/fcu-profile.ts ; FlopSpecs/FcuServing.lean · #3107
+FCU activation evidence (§12.5, D-0538; R12.5g)
+PARTIAL: activation stays blocked by a default-false native-readiness capability that blocks primary funding and Root unpausing; the implemented service policy, pinned profile, calibrated economics and physical pilot qualification it requires are all pending
+compute-channel::forward ; pallets/runtime/zkverify/src/fcu.rs · #3111
+FCU pause and drain (§12.5, D-0537; R12.5h)
+PARTIAL: primary admission defaults to paused ( FcuPrimaryAdmissionsPaused ) and Root sets it with set_fcu_primary_admissions_paused ; paused primary funding rejects before money moves; reorg-safe indexed pause-event observations are prepared, production indexer integration is GAP
+compute-channel::{forward, set_fcu_primary_admissions_paused} · #3111
 FCU forward object (§12.5, D-0538; R12.5i, R12.5j, R12.5k, R12.5l, R12.5m, R12.5n, R12.5o, R12.5p, R12.5q)
-PARTIAL: accounting, fractional transfers, atomic resale, funding-time snapshots, lifecycle indexing and guarded activation landed in #3310. Executable profile/admission SDK preparation and booking-horizon arithmetic are present; the native candidate adds immutable Root-governed profile/qualification registries and a current-block UTC stamp from the validated Timestamp inherent. Its SDK/native profile commitment shares a known-answer vector; sold revisions cannot be repriced. A default-false native-readiness capability blocks primary funding and Root unpausing while service/custody integration is incomplete, without disabling historical parameter reads or existing claims. Binding primary funding to those records and converting the complete FCU financial lifecycle to UTC remain GAP. The clock stamp is inclusion data, not BFT finality evidence: serving authority must read it from the node client’s verified BFT-finalized chain, never a reported head or tip fallback. SDK holder coordination now reserves pending work with durable CAS and signed decisions; its production chain/workload/fence adapters remain GAP. Miner-controlled serving pause/drain, an agent request client and a local durable pilot journal are prepared; the candidate adds a separate Root-controlled, default-paused primary financial gate and reorg-safe indexed pause-event observations. Production worker and authenticated serving-authority/indexer integrations remain GAP. SDK verified-delivery accounting now consumes correct available work once independently of timing and retains original-beneficiary SLA claim transitions with finalized-only credits and reserve encumbrance. The native reserve funding/payment adapter, canonical production journal/fences, independent timing trust and GPU/economics qualification remain GAP; these SDK ports are not an authoritative money boundary. SDK claim finalization also checks the authenticated prior ordinal, and miner-capacity release requires a terminal compute/receipt/fence checkpoint. Synthetic 32-seed service/economic scenarios exercise dated inventory, retries, beneficiary retention, credit caps and reserve/witness carry costs; they are not GPU or market qualification. Studio-authored native profile/UTC and synthetic-service models provide 37 sampled invariant checks plus reservation action/mutation regressions; full native funding/custody/financial-UTC composition remains GAP (see verification scope). Arithmetic Lean proofs do not prove physical service or runtime refinement
+PARTIAL: accounting, fractional transfers, atomic resale, funding-time snapshots, lifecycle indexing and guarded activation have landed. Executable profile/admission SDK preparation and booking-horizon arithmetic are present; the runtime source adds immutable Root-governed profile/qualification registries and a current-block UTC stamp from the validated Timestamp inherent. Its SDK/native profile commitment shares a known-answer vector; sold revisions cannot be repriced. A default-false native-readiness capability blocks primary funding and Root unpausing while service/custody integration is incomplete, without disabling historical parameter reads or existing claims. Binding primary funding to those records and converting the complete FCU financial lifecycle to UTC remain GAP. The clock stamp is inclusion data, not BFT finality evidence: serving authority must read it from the node client’s verified BFT-finalized chain, never a reported head or tip fallback. SDK holder coordination now reserves pending work with durable CAS and signed decisions; its production chain/workload/fence adapters remain GAP. Miner-controlled serving pause/drain, an agent request client and a local durable journal are prepared; the runtime source adds a separate Root-controlled, default-paused primary financial gate and reorg-safe indexed pause-event observations. Production worker and authenticated serving-authority/indexer integrations remain GAP. SDK verified-delivery accounting now consumes correct available work once independently of timing and retains original-beneficiary SLA claim transitions with finalized-only credits and reserve encumbrance. The native reserve funding/payment adapter, canonical production journal/fences, independent timing trust and GPU/economics qualification remain GAP; these SDK ports are not an authoritative money boundary. SDK claim finalization also checks the authenticated prior ordinal, and miner-capacity release requires a terminal compute/receipt/fence checkpoint. Synthetic 32-seed service/economic scenarios exercise dated inventory, retries, beneficiary retention, credit caps and reserve/witness carry costs; they are not GPU or market qualification. Formal native profile/UTC and synthetic-service models provide 37 sampled invariant checks plus reservation action/mutation regressions; full native funding/custody/financial-UTC composition remains GAP (see verification scope). Arithmetic Lean proofs do not prove physical service or runtime refinement
 compute-channel::{forward, traits} ; sdk/typescript/src/compute-channel/fcu-profile.ts ; sdk/typescript/src/compute-channel/fcu-serving.ts ; sdk/typescript/src/compute-channel/fcu-timing.ts ; sdk/typescript/src/compute-channel/fcu-agent.ts ; agent pilot; FlopSpecs/FcuServing.lean ; FlopSpecs/FcuEconomics.lean ; veil/FlopVeil/ForwardComputeUnit.lean ; research/fcu_object.py · #3262/#3107/#3111
 FLOP-leg HTLC create/redeem/refund; cross-chain pair profiles
 LIVE local mechanics; all implemented pair directions target-only — conformance PENDING E.48

@@ -1,9 +1,9 @@
 {
   "commits": {
     "flop-labs/technocore-chat": "3cd868e9a920fe61ad318d71ced1af11501b8fae",
-    "flop-labs/yellowpaper": "2a2cc8218048a2933071bb2f45d75335560e39d8"
+    "flop-labs/yellowpaper": "a5b4326d006c471ef01d6262373150412439d33c"
   },
-  "issues_since": "2026-11-18T04:11:56Z",
+  "issues_since": "2026-11-18T13:51:17Z",
   "pages": {
     "https://flop.finance/": {
       "lines": 26,
@@ -11,7 +11,7 @@
     },
     "https://flop.finance/intro/": {
       "lines": 59,
-      "sha": "25f96564883f"
+      "sha": "f1045cbc21c1"
     },
     "https://flop.finance/intro/agent/": {
       "lines": 59,
@@ -23,23 +23,23 @@
     },
     "https://flop.finance/intro/revenue/": {
       "lines": 273,
-      "sha": "494311b6fdd3"
+      "sha": "2fe33ab66f03"
     },
     "https://flop.finance/intro/validator/": {
       "lines": 59,
-      "sha": "535313fa3dbd"
+      "sha": "54de65c968d1"
     },
     "https://flop.finance/intro/verification/": {
       "lines": 72,
       "sha": "bc06de26bcd1"
     },
     "https://flop.finance/intro/yellowpaper/": {
-      "lines": 6032,
-      "sha": "92dcff833503"
+      "lines": 6239,
+      "sha": "8c804c5eea07"
     },
     "https://flop.finance/teaser/": {
       "lines": 329,
-      "sha": "38e9bf1dde74"
+      "sha": "9890eda983f4"
     },
     "https://technocore.chat/llms.txt": {
       "lines": 343,
@@ -47,6 +47,7 @@
     }
   },
   "releases": {
+    "network": "sdk/v0.6.0",
     "tclk": "v0.1.0",
     "technocore-chat": "v0.14.1"
   },
