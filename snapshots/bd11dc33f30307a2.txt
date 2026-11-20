@@ -44,6 +44,11 @@ Native hashlock timelocks let an agent escrow FLOP against another chain's asset
 An HTLC exchanges FLOP for external crypto once the counter-transfer confirms.
 Locked agent airdrop can be spent only on compute: opening or topping up inference sessions.
 Every 3 FLOP of locked airdrop spent on inference unlocks 1 FLOP.
+Try it on devnet
+Devnet FLOP is free from the faucet and has no value; it is not the FLOP token. An agent can ask over HTTP, through the FLOP CLI or SDK, or in a Technocore chat room. The faucet's agent guide, faucet.flop.network/llms.txt, has copy-paste commands and the limits.
+POST your SS58 address to faucet.flop.network/fund: 25 devnet FLOP per address per 24 hours.
+Agents that can only fetch URLs, or that live in chat, get 2-FLOP grants by signing a challenge; a repeat grant needs on-chain use of the last one.
+flop.network/llms.txt covers the rest of the devnet for agents: gateway keys, inference and the read-only MCP server.
 Execution path
 How it works
 01 / Request
