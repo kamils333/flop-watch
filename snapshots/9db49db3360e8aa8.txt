@@ -154,7 +154,7 @@ Appendix E — Open Specification Items ; the body references a
 stub rather than restating an open debate.
 Decision provenance. Ratified positions are recorded once in
 decisions/v0.4.md ( D-0401 .. D-0441 ) and
-decisions/v0.5.md ( D-0501 .. D-0547 ); entries are immutable once merged and
+decisions/v0.5.md ( D-0501 .. D-0550 ); entries are immutable once merged and
 superseded by ID. Where a normative rule cites a D-id , the citation is provenance only — the
 rule itself is stated in full in the body; the reader never needs the decision record to implement.
 0. Conformance & Reading Guide
@@ -587,8 +587,8 @@ finality_committee_size = 100 (200 pending E.58)
 Capacity/latency profile
 none; E.46 remains open
 The committee cap of 100 is cost-derived. At the original 1.5 FLOP floor the validator reward pool
-sustained ~112 bare-metal validators, which is where the cap of 100 was sized. D-0436 doubled the
-floor to 3 FLOP/block, so that pool now sustains ~224 : the cap sits roughly 2.2x inside the
+sustained 112 bare-metal validators, which is where the cap of 100 was sized. D-0436 doubled the
+floor to 3 FLOP/block, so that pool now sustains ** 224**: the cap sits roughly 2.2x inside the
 ceiling rather than at it, and validator cost is no longer the binding constraint on committee size.
 Capture analysis is parameterized by realized committee size; an N=100 bound MUST NOT be applied to
 an undersized committee. Bootstrap and minimum-safe-size behavior are E.42.
@@ -1649,7 +1649,15 @@ D-0408 (single validator-staking system), D-0413 (value-coupled stake floor), D-
 (capacity-proportional miner stake), D-0541 (capacity-stake rate anchored at 400,000 G_n/s per
 H100; formula unchanged), D-0403 (sessions as the
 escrow primitive's first instance), D-0530 (operator self-stake only; deprecation of delegation and
-commissions; 5% duration-locked community staking pool). Grounding:
+commissions; 5% duration-locked community staking pool).
+Purpose of the capacity term: it is the current proxy for R3.5b's collateral-covers-exposure
+requirement. The bond's job is to make every deviation unprofitable
+(economic rules). Known gaps of the proxy: per-miner
+value exposure is not tracked; the emission-fraud rationale above does not reach paid sessions, which
+earn no public credit (R11.2b) yet carry escrow exposure; and cooperative settlement is final once the
+payer co-signs, with no later challenge. D-0549 (decided in direction, sizing open) enforces R3.5b directly, as
+E.62 .
+Grounding:
 agent-composition-primitives.md,
 agent-token-lifecycle.md,
 model-selection-pricing-inference.md,
@@ -1705,9 +1713,11 @@ downgrade to SOFT. Inventory entries MUST be canonicalized by SKU.
 R7.1c. Calibration is per miner host. C_emp includes all attached GPUs and production batching/concurrency
 once; it MUST NOT be multiplied by GPU count, channel count, session count, or batch size.
 R7.1d. A SOFT effective cap MUST NOT exceed
-calibration_max_soft_cap_gn_per_sec , which MUST stay
-below the direct PoI per-proof work floor. Acceptance and renewal apply it. Stored SOFT caps above it are
-lowered once when it is introduced; this is the only exception to R7.2's frozen lease.
+calibration_max_soft_cap_gn_per_sec . Acceptance and
+renewal apply it. Stored SOFT caps above it are lowered once when it is introduced; this is the only
+exception to R7.2's frozen lease. Until #1597 fixes the direct PoI path's units, the efficiency ceiling
+that path enforces for a SOFT cap MUST be min(cap, MinGnWeightPerProof − 1) , so no SOFT cap can pass
+the direct PoI per-proof work floor. Channel session validation uses the full cap (D-0553).
 R7.1e. Concurrent channels MUST share their miner's cap. A channel MUST reserve a positive rate
 when it becomes open, and the open MUST fail closed unless the miner's unlapsed reservations plus that
 rate are at most the miner's current cap. Every settlement path MUST bound the channel's work by
@@ -1777,7 +1787,7 @@ the attested ceiling. Latency adjustment: Adjusted_G_n = G_n · clamp(target/act
 (tracked; reward weighting is E.22).
 Rationale & sources (non-normative)
 Provenance: D-0405 (measured G_n ), D-0418 (capacity stake), D-0433 (quick entry,
-renewable cap, lifecycle revalidation), D-0542 (per-miner reservations, SOFT ceiling), D-0543 (bounded unsigned opens, non-shrinking renewals), D-0544 (unsigned-open tariff at capacity-stake parity). Runtime alignment:
+renewable cap, lifecycle revalidation), D-0542 (per-miner reservations, SOFT ceiling), D-0543 (bounded unsigned opens, non-shrinking renewals), D-0544 (unsigned-open tariff at capacity-stake parity), D-0553 (10M SOFT ceiling behind the direct PoI clamp). Runtime alignment:
 hw-calibration::{accept_benchmark_burst,effective_cap,discounted_cap,renew_benchmark_cap}
 uses the empirical cap for the initial work gate and the tier-dependent effective cap for bonding and
 renewal. At the governed floors, 64 jobs × 1,000 G over 600 blocks admit at most C_emp = 213 ; required work
@@ -2367,9 +2377,12 @@ tariff P = BasePerTurn·n + rate_G·G_claimed (flat per-turn payment over n turn
 reference-work converted into payment units) forms the payable session settlement, which is split
 85% to the miner and 15% to validators (with the 1% audit pool funded from the validator leg) under
 R12.1a. P is denominated in the escrow's base unit (10⁻¹⁸ FLOP);
-channel_base_per_turn and rate_G are each one base unit. G_n is
-the whole-reference-GFLOP integer from R4.4; the rate is a tariff price, not an assertion that one G_n
-equals one FLOP base unit. force_settle MUST reject with TariffExceedsEscrow when P > E ; it
+channel_base_per_turn is one base unit. For a spot channel, rate_G
+is the model registry price per G_n pinned at channel creation
+( model_registry_base_price_per_gn unless the publisher
+set one; proposed D-0554); a forward channel, or a spot channel opened before that runtime, uses one
+base unit. G_n is the whole-reference-GFLOP integer from R4.4; the rate is a tariff price, not an
+assertion that one G_n equals one FLOP base unit. force_settle MUST reject with TariffExceedsEscrow when P > E ; it
 MUST NOT clamp P or create negative payout legs
 ( pallets/pallets/compute-channel/src/lib.rs::{turn_tariff_pay,verified_work_from_turns} ). Otherwise,
 the agent is refunded (1−φ)·(E−P) , and the penalty φ·(E−P)
@@ -2661,7 +2674,8 @@ term-curve-methodology-v0.md (the observational FCU forward
 curve: terminal bonded settlements only, 1d/7d/30d buckets, quantity-weighted median under
 publication floors — never blended with spot FRCR),
 dispute-window-rightsizing.md (the 7 d → ~1 d rightsize
-analysis, deferred). Agent-security cluster:
+analysis, deferred).
+Agent-security cluster:
 security-across-domains.md,
 agent-security.md,
 agent-specific-security.md. Formal:
@@ -3485,10 +3499,10 @@ calibration_provisional_discount_ppm
 §7.1
 HARD-tier provisional discount applied to attested SKU ceilings before min(empirical_burst_cap, discounted_sku_ceiling). yellowpaper §7.1.
 calibration_max_soft_cap_gn_per_sec
-999_999 G_n/s
+10_000_000 G_n/s
 §7.1
-D-0542
-Ceiling on a SOFT (non-attested) effective calibration cap.
+D-0553
+Ceiling on a SOFT (non-attested) effective calibration cap, applied at acceptance and renewal; the hw-calibration v1 migration clamps stored SOFT caps once.
 channel_max_unconsented_session_blocks
 14_400 blocks
 §7.1
@@ -3594,15 +3608,15 @@ fcu_max_tenor
 D-0434
 D-0434 launch tenor cap: 30 times 86,400 blocks, or 30 target-cadence days.
 model_registry_base_price_per_gn
-VFY / 2_000_000 base units per reference G_n (5e-7 FLOP)
+VFY / 50_000_000 base units per reference G_n (2e-8 FLOP)
 §12.2
-D-0533
-Devnet-ts validation value, ratified 2026-11-18 (D-0533).
+D-0554
+Devnet-ts value proposed by D-0554 (pending ratification), replacing D-0533's 5e-7 FLOP validation value: 20 FLOP per billion G_n, about half a public Qwen3-14B list price for the measured agent mix at the devnet-ts reference FLOP rate.
 fcu_min_gn
-100_000_000 G_n
+2_500_000_000 G_n
 §12.5
-D-0533
-Fee-share floor: transfer_forward_units plus ExtrinsicBaseWeight costs 614,081,000 ref_time with the current 19 reads and 4 writes, at TransactionPicosecondFee = 5e6 planck/unit: 0.003070405 FLOP. At the BasePricePerGFLOP = 0.0000005 FLOP benchmark of proposed D-0533 (not ratified), the exact minimum for a 1 bp fee share is 61,408,100 G_n.
+D-0554
+Fee-share floor: transfer_forward_units plus ExtrinsicBaseWeight costs 614,081,000 ref_time with the current 19 reads and 4 writes, at TransactionPicosecondFee = 5e6 planck/unit: 0.003070405 FLOP. At the BasePricePerGFLOP = 0.00000002 FLOP base of proposed D-0554, the exact minimum for a 1 bp fee share is 1,535,202,500 G_n.
 fcu_liveness_checks_per_day
 2 checks/day
 §12.5
@@ -3785,7 +3799,7 @@ aleph_max_round
 §15.4
 Maximum AlephBFT round accepted in one session.
 aleph_gossip_protocol_version
-5 version
+6 version
 §15.4
 Notification-protocol version for AlephBFT unit gossip (/flop/aleph/N).
 finality_committee_size
@@ -3938,7 +3952,8 @@ Max Merkle authentication-path length per VerifiedTurn (proves membership in a t
 channel_base_per_turn
 1 base unit (10^-18 FLOP)
 §12.1
-Per-turn flat fee of the two-part tariff (#719 option A): turn_pay = BasePerTurn + G_n (rate=1 in channel pay units).
+D-0554
+Per-turn flat fee of the two-part tariff (#719 option A): turn_pay = BasePerTurn + price_per_gn · G_n, where a spot channel's price_per_gn is the model registry price pinned at open (D-0554, proposed); forward channels and spot channels opened before D-0554 keep one atom per G_n.
 channel_c_turn_fixed
 1 base unit (10^-18 FLOP)
 §12.1
@@ -4035,7 +4050,7 @@ Decision
 Description
 max_decode_policies_per_model
 32 count
-Maximum decode-policy hashes pinnable in a model's optional allowed set (BoundedDecodePolicySet = BoundedVec<H256, ConstU32<MAX_DECODE_POLICIES_PER_MODEL>>).
+Maximum decode-policy hashes pinnable in a model's optional allowed set (BoundedDecodePolicySet = BoundedVec<H256, ConstU32 >).
 Metering cert tokens-per-byte band (#871)
 Parameter
 Value
@@ -4712,7 +4727,7 @@ Decisions v0.4 — D-0401 .. D-0441 (consensus, sovereign DA, sessions, measured
 model_hash , measured G_n , validator-native attestation, governance, rotation-by-stake,
 composability, capacity-proportional miner stake, unbonding slash-lock, correlated equivocation, TOPLOC
 required, TEE-optional) + the v0.3 → v0.4 changelog.
-Decisions v0.5 — D-0501 .. D-0547 (public claim scope, wire formats,
+Decisions v0.5 — D-0501 .. D-0550 (public claim scope, wire formats,
 paid storage, validator policy, grant unlocks, reward routing, parameter calibration, FCU, model
 identity, inference-fee credits, and the Era-T season length).
 Research corpus (each doc carries its full citation set): the
@@ -4920,11 +4935,12 @@ Blocking: #440.
 E.24 — Ordering-game / MEV analysis [PARTIAL] (V7). Strict dispute guard vs. non-strict finalize
 guard commute at a fixed finalized head; the residual force-settle path exposure is ≤ one escrow. Binding
 settlement mode in the signed receipt or defining protocol path priority removes the choice. The same
-choice is open to the agent: G.1 admits force_settle from either party, and at the placeholder tariff
-( channel_base_per_turn and rate_G each one base unit) P is
+choice is open to the agent: G.1 admits force_settle from either party. At the former placeholder
+rate ( rate_G one base unit, still used by forward channels and pre-D-0554 spot channels) P is
 n + ΣG_n base units, so even 10¹⁰ G_n (tens of millions of tokens on a 70B-class model) pays
 10⁻⁸ FLOP, and an agent that declines to co-sign recovers essentially (1−φ)·E of a used channel
-against R12.1a's intent. Restricting the unilateral caller,
+against R12.1a's intent. Proposed D-0554 prices spot channels at the registry rate, which narrows
+that gap to the unused escrow. Restricting the unilateral caller,
 binding the settlement mode at open, or raising the tariff to a cost-covering magnitude is part of this
 item. Operational
 maxDelay , FOCIL enforcement, and path-binding remain open. Home: §12.1, §13.2. Blocking: #445, #1610
@@ -4975,7 +4991,8 @@ adjudication, and collection events, with each factor conditioned on all prior e
 independence or Markov assumption. Placeholder:
 total_profitable_exposure < p_effective × collectible_penalty is a conditional risk-neutral deterrence
 budget, not a unique-equilibrium or zero-fraud theorem. Home: §3.5, §6.1, §11.3, §12.2. Blocking:
-a ratified payoff model; aggregate reservation is R7.1e. Tracking: #1495.
+a ratified payoff model; aggregate reservation is R7.1e. Tracking: #1495. Proposed direct
+exposure bound: E.62.
 E.46 — Direct/session capacity evidence [PENDING; PARTIAL EVIDENCE] . This mechanism remains open.
 Internal source-checked fixtures reproduce exact SCALE bytes for supported direct active-set/quorum sizes
 and cooperative/unilateral settlement over turn/path limits, a duplicate-last bundle, TOPLOC evidence
@@ -5017,6 +5034,7 @@ demand from economically independent demand and legitimate bootstrapping from pr
 Placeholder: no external-demand inference from a co-signed paid receipt; value-coupled security remains
 conditional on E.8/E.35 and unresolved genesis/reward distributions E.38–E.40. Home: §9, §11, §12.3,
 §15. Blocking: coalition payoff simulation and disclosed input distributions. Tracking: #1824.
+Proposed per-miner exposure bound: E.62.
 E.50 — Arbitrary runtime-upgrade scope [TBD] . Define the approved-code/social-governance assumption
 for Root set_code , including review, publication, voter verification, emergency handling, and what claims
 survive arbitrary bytecode replacement. Placeholder: current-runtime parameter guards, de-sudo state,
@@ -5155,6 +5173,28 @@ Placeholder: the current §11.3 values and
 da_serve_or_slash_percent , with 100 % of proceeds to
 FLOPFoundationAccount . Home: §5.3 R5.3b, §11.3, §15.7. Blocking: a D-id ratifying values and
 classes.
+E.62 — Stake-bounded miner exposure (D-0549) [RATIFY] . Enforce R3.5b directly instead of
+through calibrated capacity: admit new exposure for miner i only while exposure_i + new ≤ L_i / k ,
+failing closed otherwise. exposure_i is the deviating coalition's cumulative extractable gain before
+revocation takes effect, each gain counted once: claimable escrow, saved compute, the direct PoUI share
+of the emission pool, R8.7 grant unlocks, forward earnouts and avoided refund or SLA liabilities. L_i
+is the slash the coalition actually bears, locked until final adjudication and collection. k lies in
+the band m·(1 − p·(1−r))/p ≤ k ≤ μ/q (detection p , penalty multiple m , retained gain r , honest
+false-slash rate q , honest margin μ ); at p = 0 no bond deters, so a protocol detection floor is a
+precondition. If ratified it would subsume the reservation and payoff parts of E.22, E.45 and E.49, and
+would replace calibration's role in §6.1 and §7 only after R3.5d's checker-independence basis is
+replaced. Placeholder: the current §6.1 capacity-proportional stake and §7 calibration gates. Home:
+§3.5, §6.1, §7. Blocking: a payoff table over every value-creating transition, runtime tests for
+complete reservation and collateral held to collection, and measured p and q . Tracking: #4015.
+E.63 — Exposure sizing (D-0550) [RATIFY] . Size the D-0549 ledger with four decisions: an
+in-line sampler releasing exposure only on a verdict, with the check rate set by rule from measured
+q and d ; the penalty multiple m ; release of force-settled value at the verdict, with the R12.1f
+window from max(W_resp(ε), floor) ; and whether base stake counts toward L . At timeout , charge
+R12.1d's φ on unused escrow when the miner acked and stayed live, and refund in full only when it
+never acked. Placeholder: the 7 d window and the full timeout refund. Home: §12.1. Blocking:
+measured q , d and sampler latency, the #4388 fixes, a bound on equal-receipt reposts, and a miner
+ack and liveness signal. Analysis:
+exposure-finality-horizons.md.
 E.31 — DA-loss terminal settlement split [TBD] . Resolve whether D-0430's full-refund rule
 remains in force or a separately justified "pay last co-signed cumulative receipt, refund the
 unverifiable tail" rule supersedes it, including the evidence predicate, work-credit and forward-channel
@@ -5629,7 +5669,7 @@ verify the same receipt/turn/claim gates; compute two-part tariff P ; open chall
 receipt/turn/root/claim errors; rejects P > E with TariffExceedsEscrow (R12.1d)
 finalize(channel_id)
 anyone (signed)
-after the challenge window, pay P → miner, (1−φ)(E−P) → agent, φ(E−P) → FLOPFoundationAccount (zero burn, R12.1d); P is in the escrow's base unit (10⁻¹⁸ FLOP), with channel_base_per_turn = rate_G = 1 base unit
+after the challenge window, pay P → miner, (1−φ)(E−P) → agent, φ(E−P) → FLOPFoundationAccount (zero burn, R12.1d); P is in the escrow's base unit (10⁻¹⁸ FLOP), with channel_base_per_turn = 1 base unit and rate_G the channel's pinned per- G_n price (R12.1d)
 window not elapsed; open dispute
 timeout(channel_id)
 anyone (signed)

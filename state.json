@@ -3,7 +3,7 @@
     "flop-labs/technocore-chat": "3cd868e9a920fe61ad318d71ced1af11501b8fae",
     "flop-labs/yellowpaper": "a5b4326d006c471ef01d6262373150412439d33c"
   },
-  "issues_since": "2026-11-25T02:19:50Z",
+  "issues_since": "2026-11-25T12:41:17Z",
   "pages": {
     "https://flop.finance/": {
       "lines": 26,
@@ -19,7 +19,7 @@
     },
     "https://flop.finance/intro/miner/": {
       "lines": 71,
-      "sha": "5733c4486a3f"
+      "sha": "2c1a22f45c49"
     },
     "https://flop.finance/intro/revenue/": {
       "lines": 273,
@@ -34,8 +34,8 @@
       "sha": "bc06de26bcd1"
     },
     "https://flop.finance/intro/yellowpaper/": {
-      "lines": 6239,
-      "sha": "8c804c5eea07"
+      "lines": 6279,
+      "sha": "59382e97c430"
     },
     "https://flop.finance/teaser/": {
       "lines": 329,
