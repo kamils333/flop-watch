@@ -587,8 +587,8 @@ finality_committee_size = 100 (200 pending E.58)
 Capacity/latency profile
 none; E.46 remains open
 The committee cap of 100 is cost-derived. At the original 1.5 FLOP floor the validator reward pool
-sustained 112 bare-metal validators, which is where the cap of 100 was sized. D-0436 doubled the
-floor to 3 FLOP/block, so that pool now sustains ** 224**: the cap sits roughly 2.2x inside the
+sustained ~112 bare-metal validators, which is where the cap of 100 was sized. D-0436 doubled the
+floor to 3 FLOP/block, so that pool now sustains ~224 : the cap sits roughly 2.2x inside the
 ceiling rather than at it, and validator cost is no longer the binding constraint on committee size.
 Capture analysis is parameterized by realized committee size; an N=100 bound MUST NOT be applied to
 an undersized committee. Bootstrap and minimum-safe-size behavior are E.42.
@@ -2380,7 +2380,8 @@ R12.1a. P is denominated in the escrow's base unit (10⁻¹⁸ FLOP);
 channel_base_per_turn is one base unit. For a spot channel, rate_G
 is the model registry price per G_n pinned at channel creation
 ( model_registry_base_price_per_gn unless the publisher
-set one; proposed D-0554); a forward channel, or a spot channel opened before that runtime, uses one
+set one; D-0554, and on FLOP Testnet D-0555); a forward channel, or a spot channel opened before
+that runtime, uses one
 base unit. G_n is the whole-reference-GFLOP integer from R4.4; the rate is a tariff price, not an
 assertion that one G_n equals one FLOP base unit. force_settle MUST reject with TariffExceedsEscrow when P > E ; it
 MUST NOT clamp P or create negative payout legs
@@ -3611,12 +3612,12 @@ model_registry_base_price_per_gn
 VFY / 50_000_000 base units per reference G_n (2e-8 FLOP)
 §12.2
 D-0554
-Devnet-ts value proposed by D-0554 (pending ratification), replacing D-0533's 5e-7 FLOP validation value: 20 FLOP per billion G_n, about half a public Qwen3-14B list price for the measured agent mix at the devnet-ts reference FLOP rate.
+Devnet-ts value set by D-0554 (ratified 2026-11-25), replacing D-0533's 5e-7 FLOP validation value: 20 FLOP per billion G_n, about half a public Qwen3-14B list price for the measured agent mix at the devnet-ts reference FLOP rate.
 fcu_min_gn
 2_500_000_000 G_n
 §12.5
 D-0554
-Fee-share floor: transfer_forward_units plus ExtrinsicBaseWeight costs 614,081,000 ref_time with the current 19 reads and 4 writes, at TransactionPicosecondFee = 5e6 planck/unit: 0.003070405 FLOP. At the BasePricePerGFLOP = 0.00000002 FLOP base of proposed D-0554, the exact minimum for a 1 bp fee share is 1,535,202,500 G_n.
+Fee-share floor: transfer_forward_units plus ExtrinsicBaseWeight costs 614,081,000 ref_time with the current 19 reads and 4 writes, at TransactionPicosecondFee = 5e6 planck/unit: 0.003070405 FLOP. At the BasePricePerGFLOP = 0.00000002 FLOP base of D-0554, the exact minimum for a 1 bp fee share is 1,535,202,500 G_n.
 fcu_liveness_checks_per_day
 2 checks/day
 §12.5
@@ -3953,7 +3954,7 @@ channel_base_per_turn
 1 base unit (10^-18 FLOP)
 §12.1
 D-0554
-Per-turn flat fee of the two-part tariff (#719 option A): turn_pay = BasePerTurn + price_per_gn · G_n, where a spot channel's price_per_gn is the model registry price pinned at open (D-0554, proposed); forward channels and spot channels opened before D-0554 keep one atom per G_n.
+Per-turn flat fee of the two-part tariff (#719 option A): turn_pay = BasePerTurn + price_per_gn · G_n, where a spot channel's price_per_gn is the model registry price pinned at open (D-0554); forward channels and spot channels opened before D-0554 keep one atom per G_n.
 channel_c_turn_fixed
 1 base unit (10^-18 FLOP)
 §12.1
@@ -4050,7 +4051,7 @@ Decision
 Description
 max_decode_policies_per_model
 32 count
-Maximum decode-policy hashes pinnable in a model's optional allowed set (BoundedDecodePolicySet = BoundedVec<H256, ConstU32 >).
+Maximum decode-policy hashes pinnable in a model's optional allowed set (BoundedDecodePolicySet = BoundedVec<H256, ConstU32<MAX_DECODE_POLICIES_PER_MODEL>>).
 Metering cert tokens-per-byte band (#871)
 Parameter
 Value
@@ -4939,7 +4940,7 @@ choice is open to the agent: G.1 admits force_settle from either party. At the f
 rate ( rate_G one base unit, still used by forward channels and pre-D-0554 spot channels) P is
 n + ΣG_n base units, so even 10¹⁰ G_n (tens of millions of tokens on a 70B-class model) pays
 10⁻⁸ FLOP, and an agent that declines to co-sign recovers essentially (1−φ)·E of a used channel
-against R12.1a's intent. Proposed D-0554 prices spot channels at the registry rate, which narrows
+against R12.1a's intent. D-0554 prices spot channels at the registry rate, which narrows
 that gap to the unused escrow. Restricting the unilateral caller,
 binding the settlement mode at open, or raising the tariff to a cost-covering magnitude is part of this
 item. Operational
